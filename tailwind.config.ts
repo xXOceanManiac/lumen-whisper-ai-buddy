@@ -61,7 +61,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+                lumen: {
+                    blue: '#1EAEDB',
+                    purple: '#9b87f5',
+                    lightBlue: '#33C3F0',
+                    lightPurple: '#D6BCFA',
+                    softBlue: '#D3E4FD',
+                    gray: '#8E9196',
+                    lightGray: '#F3F3F3',
+                    white: '#FFFFFF',
+                    dark: '#1A1F2C'
+                }
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

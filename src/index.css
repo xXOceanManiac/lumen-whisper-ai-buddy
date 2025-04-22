@@ -13,16 +13,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 195 87% 49%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 261 83% 75%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 195 87% 49%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -30,9 +30,9 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 195 87% 49%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -97,5 +97,66 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .chat-container {
+    @apply flex flex-col w-full max-w-3xl mx-auto h-full;
+  }
+
+  .chat-messages {
+    @apply flex flex-col space-y-4 p-4 overflow-y-auto flex-grow;
+  }
+
+  .bubble-user {
+    @apply bg-secondary/20 text-foreground rounded-2xl rounded-tr-sm py-2 px-4 max-w-[80%] self-end;
+  }
+
+  .bubble-assistant {
+    @apply bg-primary/10 text-foreground rounded-2xl rounded-tl-sm py-2 px-4 max-w-[80%] self-start;
+  }
+
+  .mic-button {
+    @apply h-14 w-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center transition-all duration-200;
+  }
+
+  .mic-button-active {
+    @apply bg-red-500 scale-110 shadow-xl;
+  }
+
+  .mic-button-pulse {
+    @apply animate-pulse;
+  }
+
+  .settings-drawer {
+    @apply bg-background p-6 shadow-lg border-l border-border;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-md;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes wave {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
   }
 }
