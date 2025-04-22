@@ -1,17 +1,20 @@
 
 import { useEffect, useRef, useState } from "react";
-import { Message, Settings } from "@/types";
+import { CalendarEvent, Message, Settings } from "@/types";
 import { getSettings, saveSettings, getChatHistory, saveChatHistory, defaultSettings } from "@/utils/localStorage";
 import { startListening, stopListening, isSpeechRecognitionSupported } from "@/utils/speechToText";
 import { speak, stopSpeaking, isSpeechSynthesisSupported } from "@/utils/textToSpeech";
 import { startWakeWordDetection, stopWakeWordDetection } from "@/utils/wakeWord";
-import { callOpenAIChat } from "@/utils/openai";
+import { callChatApi } from "@/api/chat";
+import { createCalendarEvent, connectGoogleCalendar } from "@/api/calendar";
 
 import ChatBubble from "@/components/ChatBubble";
 import MicButton from "@/components/MicButton";
 import AssistantHeader from "@/components/AssistantHeader";
 import SettingsDrawer from "@/components/SettingsDrawer";
 import VoiceActivationIndicator from "@/components/VoiceActivationIndicator";
+import { Calendar, Mic } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
   // State
@@ -29,10 +32,37 @@ const Index = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   
+  // Toast notifications
+  const { toast } = useToast();
+  
   // Load settings and chat history
   useEffect(() => {
     setSettings(getSettings());
     setMessages(getChatHistory().messages);
+    
+    // Check for Google OAuth redirect/callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess = urlParams.get('oauth_success');
+    
+    if (oauthSuccess === 'true') {
+      // Update settings to show Google Calendar is connected
+      const updatedSettings = {
+        ...getSettings(),
+        googleCalendarConnected: true
+      };
+      setSettings(updatedSettings);
+      saveSettings(updatedSettings);
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Show success toast
+      toast({
+        title: "Google Calendar Connected",
+        description: "You can now schedule events via voice or text.",
+        duration: 5000,
+      });
+    }
   }, []);
   
   // Add system message if messages are empty
@@ -41,7 +71,7 @@ const Index = () => {
       const systemMessage: Message = {
         id: "system-1",
         role: "assistant",
-        content: "Hello! I'm Lumen, your AI assistant. How can I help you today?",
+        content: "Hello! I'm Lumen, your AI assistant. How can I help you today? You can ask me to schedule events on your calendar or ask me general questions.",
         timestamp: Date.now(),
       };
       setMessages([systemMessage]);
@@ -153,42 +183,78 @@ const Index = () => {
     setStreamingResponse("");
     
     try {
-      // Call OpenAI API with streaming
-      await callOpenAIChat(
+      // Call chat API
+      const response = await callChatApi(
         [...messages, userMessage],
-        settings.openaiApiKey,
-        // Streaming chunk handler
-        (chunk) => {
-          setStreamingResponse((prev) => prev + chunk);
-        }
+        settings.openaiApiKey
       );
       
-      // After streaming complete, add the full message
-      if (streamingResponse) {
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: streamingResponse,
-          timestamp: Date.now(),
-        };
-        
-        setMessages((prev) => [...prev, assistantMessage]);
-        setStreamingResponse("");
-        
-        // Speak the response if speech synthesis is supported
-        if (isSpeechSynthesisSupported()) {
-          setIsSpeaking(true);
-          speak(
-            assistantMessage.content,
-            "",
-            () => setIsSpeaking(true),
-            () => setIsSpeaking(false),
-            (error) => {
-              console.error("Speech synthesis error:", error);
-              setIsSpeaking(false);
-            }
+      // Create the assistant message
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: response.content,
+        timestamp: Date.now(),
+      };
+      
+      // If a calendar event was detected
+      if (response.calendarEvent) {
+        // Only try to create the event if Google Calendar is connected
+        if (settings.googleCalendarConnected) {
+          const eventCreated = await createCalendarEvent(
+            response.calendarEvent,
+            settings.openaiApiKey
           );
+          
+          if (eventCreated) {
+            assistantMessage.calendarEvent = response.calendarEvent;
+            toast({
+              title: "Event Created",
+              description: `Added "${response.calendarEvent.title}" to your calendar.`,
+              duration: 3000,
+            });
+          } else {
+            toast({
+              title: "Failed to Create Event",
+              description: "There was an error creating the calendar event.",
+              variant: "destructive",
+              duration: 3000,
+            });
+          }
+        } else {
+          // Prompt user to connect Google Calendar
+          toast({
+            title: "Google Calendar Not Connected",
+            description: "Please connect your Google Calendar to add events.",
+            action: (
+              <button
+                onClick={connectGoogleCalendar}
+                className="bg-primary text-white px-3 py-1 rounded-md text-xs"
+              >
+                Connect
+              </button>
+            ),
+            duration: 5000,
+          });
         }
+      }
+      
+      // Add assistant message to chat
+      setMessages((prev) => [...prev, assistantMessage]);
+      
+      // Speak the response if speech synthesis is supported
+      if (isSpeechSynthesisSupported()) {
+        setIsSpeaking(true);
+        speak(
+          assistantMessage.content,
+          "",
+          () => setIsSpeaking(true),
+          () => setIsSpeaking(false),
+          (error) => {
+            console.error("Speech synthesis error:", error);
+            setIsSpeaking(false);
+          }
+        );
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -236,7 +302,7 @@ const Index = () => {
   const speechSupported = isSpeechRecognitionSupported();
   
   return (
-    <div className="flex flex-col h-screen bg-lumen-lightGray">
+    <div className="flex flex-col h-screen bg-sidebar dark:bg-sidebar">
       <VoiceActivationIndicator isActive={isListening} />
       <AssistantHeader
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -270,14 +336,14 @@ const Index = () => {
         </div>
         
         {/* Input Area */}
-        <div className="p-4 bg-white border-t border-gray-200">
+        <div className="p-4 bg-sidebar border-t border-gray-200 dark:border-gray-800">
           <form onSubmit={handleTextSubmit} className="flex items-center gap-2">
             <input
               type="text"
               value={currentText}
               onChange={(e) => setCurrentText(e.target.value)}
               placeholder={isListening ? "Listening..." : "Type a message..."}
-              className="flex-1 p-3 rounded-full border border-gray-300 focus:ring-2 focus:ring-lumen-blue focus:border-transparent outline-none"
+              className="flex-1 p-3 rounded-full border border-gray-300 dark:border-gray-700 dark:bg-sidebar-accent focus:ring-2 focus:ring-lumen-purple focus:border-transparent outline-none"
               disabled={isListening || isProcessing}
               ref={textInputRef}
             />
@@ -295,13 +361,23 @@ const Index = () => {
             </div>
           )}
           
-          <div className="flex justify-center mt-2">
+          <div className="flex justify-between mt-2">
             <button
               onClick={handleClearChat}
-              className="text-xs text-lumen-gray hover:text-lumen-blue"
+              className="text-xs text-lumen-gray hover:text-lumen-purple"
             >
               Clear Chat
             </button>
+            
+            {!settings.googleCalendarConnected && (
+              <button
+                onClick={connectGoogleCalendar}
+                className="text-xs flex items-center gap-1 text-lumen-purple hover:text-lumen-lightPurple"
+              >
+                <Calendar size={12} />
+                <span>Connect Google Calendar</span>
+              </button>
+            )}
           </div>
         </div>
       </main>

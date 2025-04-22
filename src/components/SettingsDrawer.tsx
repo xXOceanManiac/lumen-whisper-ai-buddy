@@ -1,6 +1,8 @@
 
 import { Settings } from "@/types";
 import { useState } from "react";
+import { Calendar, Check } from "lucide-react";
+import { connectGoogleCalendar } from "@/api/calendar";
 
 interface SettingsDrawerProps {
   settings: Settings;
@@ -35,12 +37,12 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
         onClick={onClose}
       />
       
-      <div className="settings-drawer h-full w-full max-w-md overflow-auto relative z-10">
+      <div className="settings-drawer h-full w-full max-w-md overflow-auto relative z-10 dark:bg-sidebar dark:text-white">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Settings</h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-lumen-lightGray"
+            className="p-2 rounded-full hover:bg-lumen-lightGray dark:hover:bg-sidebar-accent"
             aria-label="Close settings"
           >
             <svg
@@ -76,7 +78,7 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
                   name="openaiApiKey"
                   value={localSettings.openaiApiKey}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-sidebar-accent rounded-md"
                   placeholder="sk-..."
                   required
                 />
@@ -86,7 +88,7 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
                     href="https://platform.openai.com/api-keys"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-lumen-blue underline"
+                    className="text-lumen-purple underline"
                   >
                     OpenAI
                   </a>
@@ -103,7 +105,7 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
                   name="elevenlabsApiKey"
                   value={localSettings.elevenlabsApiKey}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-sidebar-accent rounded-md"
                   placeholder="Your ElevenLabs API key"
                 />
                 <p className="text-xs text-lumen-gray">
@@ -112,7 +114,7 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
                     href="https://elevenlabs.io/app/api-key"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-lumen-blue underline"
+                    className="text-lumen-purple underline"
                   >
                     ElevenLabs
                   </a>
@@ -167,19 +169,52 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
                 </label>
               </div>
             </div>
+            
+            {/* Google Calendar Integration */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Integrations</h3>
+              
+              <div className="border border-gray-300 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={18} className="text-lumen-purple" />
+                    <span>Google Calendar</span>
+                  </div>
+                  
+                  {localSettings.googleCalendarConnected ? (
+                    <div className="flex items-center gap-1 text-green-500 text-sm">
+                      <Check size={16} />
+                      <span>Connected</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={connectGoogleCalendar}
+                      className="text-sm bg-lumen-purple hover:bg-lumen-purple/90 text-white px-3 py-1 rounded-md"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+                
+                <p className="text-xs text-lumen-gray mt-2">
+                  Connect your Google Calendar to schedule events via voice or text commands.
+                </p>
+              </div>
+            </div>
           </div>
           
           <div className="mt-8 flex space-x-4">
             <button
               type="submit"
-              className="bg-lumen-blue hover:bg-lumen-blue/90 text-white py-2 px-4 rounded-md"
+              className="bg-lumen-purple hover:bg-lumen-purple/90 text-white py-2 px-4 rounded-md"
             >
               Save Settings
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="bg-lumen-lightGray hover:bg-lumen-gray/20 text-lumen-dark py-2 px-4 rounded-md"
+              className="bg-lumen-lightGray hover:bg-lumen-gray/20 text-lumen-dark dark:bg-sidebar-accent dark:text-white py-2 px-4 rounded-md"
             >
               Cancel
             </button>

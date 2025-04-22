@@ -4,6 +4,14 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  calendarEvent?: CalendarEvent;
+}
+
+export interface CalendarEvent {
+  type: 'calendar';
+  title: string;
+  start: string;
+  end: string;
 }
 
 export interface Settings {
@@ -13,6 +21,7 @@ export interface Settings {
   useWhisper: boolean;
   voiceActivation: boolean;
   voiceId?: string;
+  googleCalendarConnected?: boolean;
 }
 
 export interface ChatHistory {

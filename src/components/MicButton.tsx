@@ -37,7 +37,7 @@ const MicButton = ({ isListening, onClick, disabled = false }: MicButtonProps) =
       {ripples.map(({ id }) => (
         <div 
           key={id}
-          className="absolute rounded-full bg-primary/20 animate-[wave_2s_ease-out]"
+          className="absolute rounded-full bg-lumen-purple/20 animate-[wave_2s_ease-out]"
           style={{
             width: '100%',
             height: '100%',
@@ -46,7 +46,7 @@ const MicButton = ({ isListening, onClick, disabled = false }: MicButtonProps) =
       ))}
       
       <button
-        className={`mic-button ${isListening ? 'mic-button-active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`mic-button ${isListening ? 'mic-button-active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${isListening ? 'bg-red-500' : 'bg-lumen-purple'} hover:shadow-[0_0_15px_rgba(155,135,245,0.5)]`}
         onClick={onClick}
         disabled={disabled}
         aria-label={isListening ? 'Stop listening' : 'Start listening'}
