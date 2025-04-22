@@ -13,7 +13,7 @@ import MicButton from "@/components/MicButton";
 import AssistantHeader from "@/components/AssistantHeader";
 import SettingsDrawer from "@/components/SettingsDrawer";
 import VoiceActivationIndicator from "@/components/VoiceActivationIndicator";
-import { Calendar, Mic } from "lucide-react";
+import { Calendar, Mic, Send } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
@@ -144,6 +144,13 @@ const Index = () => {
       if (success) {
         setIsListening(true);
         setCurrentText("");
+      } else {
+        toast({
+          title: "Speech Recognition Error",
+          description: "Could not start listening. Check browser permissions.",
+          variant: "destructive",
+          duration: 3000,
+        });
       }
     }
   };
@@ -347,6 +354,15 @@ const Index = () => {
               disabled={isListening || isProcessing}
               ref={textInputRef}
             />
+            
+            <button
+              type="submit"
+              disabled={!currentText.trim() || isProcessing}
+              className="p-3 rounded-full bg-lumen-purple text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-lumen-purple/90 transition-colors"
+              aria-label="Send message"
+            >
+              <Send size={20} />
+            </button>
             
             <MicButton
               isListening={isListening}
