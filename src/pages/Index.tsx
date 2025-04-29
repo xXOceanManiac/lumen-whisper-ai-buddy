@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { CalendarEvent, Message, Settings } from "@/types";
 import { getSettings, saveSettings, getChatHistory, saveChatHistory, defaultSettings } from "@/utils/localStorage";
@@ -6,7 +5,7 @@ import { startListening, stopListening, isSpeechRecognitionSupported } from "@/u
 import { speak, stopSpeaking, isSpeechSynthesisSupported } from "@/utils/textToSpeech";
 import { startWakeWordDetection, stopWakeWordDetection } from "@/utils/wakeWord";
 import { callChatApi } from "@/api/chat";
-import { createCalendarEvent, connectGoogleCalendar } from "@/api/calendar";
+import { createCalendarEvent, connectGoogleCalendar, checkGoogleCalendarAuth } from "@/api/calendar";
 
 import ChatBubble from "@/components/ChatBubble";
 import MicButton from "@/components/MicButton";
@@ -43,8 +42,15 @@ const Index = () => {
     // Check for Google OAuth redirect/callback
     const urlParams = new URLSearchParams(window.location.search);
     const oauthSuccess = urlParams.get('oauth_success');
+    const oauthError = urlParams.get('oauth_error');
+    const state = urlParams.get('state');
+    const storedState = localStorage.getItem('googleOAuthState');
     
-    if (oauthSuccess === 'true') {
+    // Clear stored OAuth state regardless of outcome
+    localStorage.removeItem('googleOAuthState');
+    
+    // Handle OAuth success
+    if (oauthSuccess === 'true' && state && state === storedState) {
       // Update settings to show Google Calendar is connected
       const updatedSettings = {
         ...getSettings(),
@@ -60,6 +66,19 @@ const Index = () => {
       toast({
         title: "Google Calendar Connected",
         description: "You can now schedule events via voice or text.",
+        duration: 5000,
+      });
+    } 
+    // Handle OAuth error
+    else if (oauthError || (oauthSuccess === 'true' && (!state || state !== storedState))) {
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Show error toast
+      toast({
+        title: "Google Calendar Connection Failed",
+        description: oauthError || "Authentication error. Please try again.",
+        variant: "destructive",
         duration: 5000,
       });
     }
@@ -108,6 +127,34 @@ const Index = () => {
       };
     }
   }, [settings.voiceActivation, wakeWordActive]);
+  
+  // Verify Google Calendar connection on settings load
+  useEffect(() => {
+    const verifyCalendarConnection = async () => {
+      if (settings.googleCalendarConnected && settings.openaiApiKey) {
+        const isAuthenticated = await checkGoogleCalendarAuth(settings.openaiApiKey);
+        
+        if (!isAuthenticated && settings.googleCalendarConnected) {
+          // Update settings to show Google Calendar is disconnected
+          const updatedSettings = {
+            ...settings,
+            googleCalendarConnected: false
+          };
+          setSettings(updatedSettings);
+          saveSettings(updatedSettings);
+          
+          toast({
+            title: "Google Calendar Disconnected",
+            description: "Your Google Calendar connection has expired. Please reconnect.",
+            variant: "destructive",
+            duration: 5000,
+          });
+        }
+      }
+    };
+    
+    verifyCalendarConnection();
+  }, [settings.googleCalendarConnected, settings.openaiApiKey]);
   
   // Functions
   const handleToggleListen = () => {
@@ -221,12 +268,29 @@ const Index = () => {
               duration: 3000,
             });
           } else {
+            // Handle calendar event creation failure with reconnection prompt
             toast({
               title: "Failed to Create Event",
-              description: "There was an error creating the calendar event.",
+              description: "There may be an authentication issue. Please reconnect Google Calendar.",
+              action: (
+                <button
+                  onClick={connectGoogleCalendar}
+                  className="bg-primary text-white px-3 py-1 rounded-md text-xs"
+                >
+                  Reconnect
+                </button>
+              ),
               variant: "destructive",
-              duration: 3000,
+              duration: 5000,
             });
+            
+            // Update settings to reflect disconnected state
+            const updatedSettings = {
+              ...settings,
+              googleCalendarConnected: false
+            };
+            setSettings(updatedSettings);
+            saveSettings(updatedSettings);
           }
         } else {
           // Prompt user to connect Google Calendar
@@ -303,6 +367,13 @@ const Index = () => {
     stopSpeaking();
     setMessages([]);
     saveChatHistory({ messages: [], lastUpdated: Date.now() });
+  };
+  
+  // Handle Google Calendar connection
+  const handleConnectGoogleCalendar = () => {
+    // Clear any previous state
+    localStorage.removeItem('googleOAuthState');
+    connectGoogleCalendar();
   };
   
   // Check if speech is supported
@@ -387,7 +458,7 @@ const Index = () => {
             
             {!settings.googleCalendarConnected && (
               <button
-                onClick={connectGoogleCalendar}
+                onClick={handleConnectGoogleCalendar}
                 className="text-xs flex items-center gap-1 text-lumen-purple hover:text-lumen-lightPurple"
               >
                 <Calendar size={12} />
@@ -404,6 +475,7 @@ const Index = () => {
         onSave={handleSaveSettings}
         onClose={() => setIsSettingsOpen(false)}
         isOpen={isSettingsOpen}
+        onConnectGoogleCalendar={handleConnectGoogleCalendar}
       />
     </div>
   );

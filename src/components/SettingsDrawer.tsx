@@ -2,16 +2,16 @@
 import { Settings } from "@/types";
 import { useState } from "react";
 import { Calendar, Check } from "lucide-react";
-import { connectGoogleCalendar } from "@/api/calendar";
 
 interface SettingsDrawerProps {
   settings: Settings;
   onSave: (settings: Settings) => void;
   onClose: () => void;
   isOpen: boolean;
+  onConnectGoogleCalendar: () => void;
 }
 
-const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerProps) => {
+const SettingsDrawer = ({ settings, onSave, onClose, isOpen, onConnectGoogleCalendar }: SettingsDrawerProps) => {
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,7 +189,7 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen }: SettingsDrawerPro
                   ) : (
                     <button
                       type="button"
-                      onClick={connectGoogleCalendar}
+                      onClick={onConnectGoogleCalendar}
                       className="text-sm bg-lumen-purple hover:bg-lumen-purple/90 text-white px-3 py-1 rounded-md"
                     >
                       Connect
