@@ -1,7 +1,6 @@
-
 import { Message } from "@/types";
 
-const API_BASE_URL = "https://lumen-backend-30ab.onrender.com";
+const API_BASE_URL = "https://lumen-backend-main.onrender.com";
 
 export const callChatApi = async (
   messages: Message[],
