@@ -1,5 +1,6 @@
 
 import { CalendarEvent } from "@/types";
+import { getRememberAuth } from "@/utils/localStorage";
 
 const API_BASE_URL = "https://lumen-backend-30ab.onrender.com";
 
@@ -43,8 +44,11 @@ export const connectGoogleCalendar = () => {
   // Store state in localStorage for verification when returning from OAuth
   localStorage.setItem("googleOAuthState", state);
   
-  // Redirect to Google OAuth endpoint with state parameter
-  window.location.href = `${API_BASE_URL}/auth/google?state=${state}`;
+  // Get the remember me preference
+  const rememberAuth = getRememberAuth();
+  
+  // Redirect to Google OAuth endpoint with state parameter and remember flag
+  window.location.href = `${API_BASE_URL}/auth/google?state=${state}&remember=${rememberAuth ? 'true' : 'false'}`;
 };
 
 export const checkGoogleCalendarAuth = async (apiKey: string): Promise<boolean> => {
@@ -70,3 +74,14 @@ export const checkGoogleCalendarAuth = async (apiKey: string): Promise<boolean> 
     return false;
   }
 }
+
+// New function to automatically connect if remembered
+export const autoConnectGoogleCalendarIfRemembered = () => {
+  if (getRememberAuth()) {
+    const lastConnected = localStorage.getItem("googleCalendarLastConnected");
+    // If we were previously connected and have the remember flag, reconnect automatically
+    if (lastConnected) {
+      connectGoogleCalendar();
+    }
+  }
+};

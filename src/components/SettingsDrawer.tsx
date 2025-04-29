@@ -1,7 +1,7 @@
-
 import { Settings } from "@/types";
 import { useState } from "react";
 import { Calendar, Check } from "lucide-react";
+import { getRememberAuth, setRememberAuth } from "@/utils/localStorage";
 
 interface SettingsDrawerProps {
   settings: Settings;
@@ -13,6 +13,7 @@ interface SettingsDrawerProps {
 
 const SettingsDrawer = ({ settings, onSave, onClose, isOpen, onConnectGoogleCalendar }: SettingsDrawerProps) => {
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
+  const [rememberAuth, setRememberAuthState] = useState<boolean>(getRememberAuth());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -21,6 +22,12 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen, onConnectGoogleCale
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+  
+  const handleRememberAuthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setRememberAuthState(checked);
+    setRememberAuth(checked);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -200,6 +207,19 @@ const SettingsDrawer = ({ settings, onSave, onClose, isOpen, onConnectGoogleCale
                 <p className="text-xs text-lumen-gray mt-2">
                   Connect your Google Calendar to schedule events via voice or text commands.
                 </p>
+                
+                <div className="flex items-center space-x-2 mt-3">
+                  <input
+                    type="checkbox"
+                    id="rememberAuth"
+                    checked={rememberAuth}
+                    onChange={handleRememberAuthChange}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="rememberAuth" className="text-sm">
+                    Remember me on this device
+                  </label>
+                </div>
               </div>
             </div>
           </div>

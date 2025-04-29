@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { autoConnectGoogleCalendarIfRemembered } from "./api/calendar";
+import { getRememberAuth } from "./utils/localStorage";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +34,11 @@ const App = () => {
     };
 
     checkSupport();
+    
+    // Check if we should auto-connect services
+    if (getRememberAuth()) {
+      autoConnectGoogleCalendarIfRemembered();
+    }
   }, []);
 
   return (

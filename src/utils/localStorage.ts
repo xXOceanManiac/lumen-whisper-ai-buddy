@@ -3,6 +3,7 @@ import { Settings, ChatHistory } from '../types';
 
 const SETTINGS_KEY = 'lumen-settings';
 const CHAT_HISTORY_KEY = 'lumen-chat-history';
+const AUTH_REMEMBER_KEY = 'lumen-remember-auth';
 
 // Default settings
 export const defaultSettings: Settings = {
@@ -35,4 +36,14 @@ export const getChatHistory = (): ChatHistory => {
 
 export const clearChatHistory = (): void => {
   localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify({ messages: [], lastUpdated: Date.now() }));
+};
+
+// Auth remember preferences
+export const setRememberAuth = (remember: boolean): void => {
+  localStorage.setItem(AUTH_REMEMBER_KEY, remember.toString());
+};
+
+export const getRememberAuth = (): boolean => {
+  const remember = localStorage.getItem(AUTH_REMEMBER_KEY);
+  return remember === 'true';
 };
