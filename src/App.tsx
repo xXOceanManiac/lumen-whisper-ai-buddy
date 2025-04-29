@@ -3,54 +3,48 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect, useState } from "react";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import { autoConnectGoogleCalendarIfRemembered } from "./api/calendar";
-import { getRememberAuth } from "./utils/localStorage";
+import { BrowserRouter } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
+import LoginView from "./components/LoginView";
+import ChatView from "./components/ChatView";
+import { AnimatePresence } from "framer-motion";
 
 const queryClient = new QueryClient();
 
+const AuthenticatedApp = () => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        <span className="ml-2 text-gray-600 dark:text-gray-300">Loading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      {isAuthenticated && user ? (
+        <ChatView user={user} />
+      ) : (
+        <LoginView />
+      )}
+    </AnimatePresence>
+  );
+};
+
 const App = () => {
-  // Add a state to check if browser supports required APIs
-  const [supported, setSupported] = useState({
-    webSpeech: false,
-    webAudio: false,
-    checked: false,
-  });
-
-  // Check browser support on mount
-  useEffect(() => {
-    const checkSupport = () => {
-      const webSpeechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-      const webAudioSupported = !!(window.AudioContext);
-      
-      setSupported({
-        webSpeech: webSpeechSupported,
-        webAudio: webAudioSupported,
-        checked: true,
-      });
-    };
-
-    checkSupport();
-    
-    // Check if we should auto-connect services
-    if (getRememberAuth()) {
-      autoConnectGoogleCalendarIfRemembered();
-    }
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <AuthenticatedApp />
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
