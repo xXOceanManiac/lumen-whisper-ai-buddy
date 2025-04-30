@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 
 interface User {
@@ -10,8 +9,9 @@ interface User {
 
 const API_BASE_URL = "https://lumen-backend-main.onrender.com";
 
-export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number }> {
+export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number; errorType?: string }> {
   try {
+    console.log("Checking authentication status...");
     const response = await fetch(`${API_BASE_URL}/auth/whoami`, {
       credentials: 'include',
       headers: {
@@ -19,15 +19,27 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
       }
     });
     
+    console.log("Auth check response status:", response.status);
+    
     if (response.ok) {
       const data = await response.json();
+      console.log("Authentication successful, user data received");
       return { authenticated: true, user: data.user, statusCode: response.status };
     }
     
-    return { authenticated: false, statusCode: response.status };
+    // Return specific error type based on status code
+    let errorType = "AUTH_FAILED";
+    if (response.status >= 500) {
+      errorType = "SERVER_ERROR";
+    } else if (response.status === 401 || response.status === 403) {
+      errorType = "UNAUTHORIZED";
+    }
+    
+    console.log(`Authentication failed with status ${response.status}, error type: ${errorType}`);
+    return { authenticated: false, statusCode: response.status, errorType };
   } catch (error) {
-    console.error("Authentication check failed:", error);
-    return { authenticated: false };
+    console.error("Authentication check network error:", error);
+    return { authenticated: false, errorType: "NETWORK_ERROR" };
   }
 }
 

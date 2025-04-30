@@ -14,13 +14,15 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  lastAuthCheck: number | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   isLoading: true,
-  error: null
+  error: null,
+  lastAuthCheck: null
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -30,10 +32,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastAuthCheck, setLastAuthCheck] = useState<number | null>(null);
 
   useEffect(() => {
     const verifyAuth = async () => {
       try {
+        console.log("Starting authentication verification...");
         // Check if we just got redirected from successful Google login
         const urlParams = new URLSearchParams(window.location.search);
         const googleSuccess = urlParams.get('google') === 'success';
@@ -42,24 +46,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (googleSuccess) {
           // Clean up URL without refreshing the page
           window.history.replaceState({}, document.title, window.location.pathname);
+          console.log("Detected Google auth success, cleaned up URL params");
         }
         
         // Check authentication status
-        const { authenticated, user } = await checkAuth();
+        const { authenticated, user, errorType } = await checkAuth();
         
         setIsAuthenticated(authenticated);
+        setLastAuthCheck(Date.now());
+        
         if (authenticated && user) {
           setUser(user);
           setError(null);
+          console.log("Authentication verified: user is authenticated");
         } else {
           setUser(null);
-          // More specific error for failed authentication
-          setError("AUTH_FAILED");
+          // Use the specific error type
+          setError(errorType || "AUTH_FAILED");
+          console.log(`Authentication failed: ${errorType || "AUTH_FAILED"}`);
         }
       } catch (err) {
-        // More specific error for network or server issues
-        setError("SERVER_ERROR");
-        console.error("Auth verification error:", err);
+        setUser(null);
+        setError("UNEXPECTED_ERROR");
+        console.error("Unexpected authentication verification error:", err);
       } finally {
         setIsLoading(false);
       }
@@ -69,7 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, error }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, error, lastAuthCheck }}>
       {children}
     </AuthContext.Provider>
   );

@@ -13,7 +13,7 @@ import { AnimatePresence } from "framer-motion";
 const queryClient = new QueryClient();
 
 const AuthenticatedApp = () => {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, error } = useAuth();
 
   if (isLoading) {
     return (
@@ -25,6 +25,9 @@ const AuthenticatedApp = () => {
       </div>
     );
   }
+
+  // Log authentication state to help with debugging
+  console.log("Auth state:", { isAuthenticated, hasUser: !!user, error });
 
   return (
     <AnimatePresence mode="wait">

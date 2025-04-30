@@ -4,20 +4,39 @@ import { googleLoginUrl } from "@/api/auth";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useEffect, useState } from "react";
 
 const LoginView = () => {
-  const { error } = useAuth();
+  const { error, lastAuthCheck } = useAuth();
+  const [showRetryButton, setShowRetryButton] = useState(false);
   
   // Function to get appropriate error message based on error code
   const getErrorMessage = (errorCode: string | null) => {
     switch(errorCode) {
       case "AUTH_FAILED":
         return "Authentication failed. Please try logging in again.";
+      case "UNAUTHORIZED":
+        return "Your session has expired. Please log in again.";
       case "SERVER_ERROR":
         return "Unable to connect to authentication server. Please try again later.";
+      case "NETWORK_ERROR":
+        return "Network error. Please check your connection and try again.";
       default:
         return "An unknown error occurred. Please try again.";
     }
+  };
+  
+  // Show retry button after a delay for network/server errors
+  useEffect(() => {
+    if (error === "NETWORK_ERROR" || error === "SERVER_ERROR") {
+      const timer = setTimeout(() => setShowRetryButton(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+  
+  // Function to retry authentication
+  const handleRetry = () => {
+    window.location.reload();
   };
 
   return (
@@ -40,7 +59,17 @@ const LoginView = () => {
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+            <AlertDescription>
+              {getErrorMessage(error)}
+              {showRetryButton && (
+                <button 
+                  onClick={handleRetry}
+                  className="block mt-2 mx-auto px-4 py-1 bg-white dark:bg-gray-800 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Retry Connection
+                </button>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -59,6 +88,12 @@ const LoginView = () => {
             </svg>
             <span>Sign in with Google</span>
           </a>
+          
+          {lastAuthCheck && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Last authentication check: {new Date(lastAuthCheck).toLocaleTimeString()}
+            </p>
+          )}
           
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
             Sign in to start chatting with your AI assistant
