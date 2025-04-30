@@ -53,10 +53,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setError(null);
         } else {
           setUser(null);
-          setError("Authentication Error");
+          // More specific error for failed authentication
+          setError("AUTH_FAILED");
         }
       } catch (err) {
-        setError("Authentication Error");
+        // More specific error for network or server issues
+        setError("SERVER_ERROR");
         console.error("Auth verification error:", err);
       } finally {
         setIsLoading(false);

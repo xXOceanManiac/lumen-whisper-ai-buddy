@@ -8,6 +8,18 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 const LoginView = () => {
   const { error } = useAuth();
   
+  // Function to get appropriate error message based on error code
+  const getErrorMessage = (errorCode: string | null) => {
+    switch(errorCode) {
+      case "AUTH_FAILED":
+        return "Authentication failed. Please try logging in again.";
+      case "SERVER_ERROR":
+        return "Unable to connect to authentication server. Please try again later.";
+      default:
+        return "An unknown error occurred. Please try again.";
+    }
+  };
+
   return (
     <motion.div 
       className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-purple-100 to-white dark:from-gray-900 dark:to-gray-800 p-4"
@@ -28,7 +40,7 @@ const LoginView = () => {
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertTitle>Error</AlertTitle>
-            <AlertDescription>Authentication Error. Try Again</AlertDescription>
+            <AlertDescription>{getErrorMessage(error)}</AlertDescription>
           </Alert>
         )}
 

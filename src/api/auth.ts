@@ -10,7 +10,7 @@ interface User {
 
 const API_BASE_URL = "https://lumen-backend-main.onrender.com";
 
-export async function checkAuth(): Promise<{ authenticated: boolean; user?: User }> {
+export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number }> {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/whoami`, {
       credentials: 'include',
@@ -21,10 +21,10 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
     
     if (response.ok) {
       const data = await response.json();
-      return { authenticated: true, user: data.user };
+      return { authenticated: true, user: data.user, statusCode: response.status };
     }
     
-    return { authenticated: false };
+    return { authenticated: false, statusCode: response.status };
   } catch (error) {
     console.error("Authentication check failed:", error);
     return { authenticated: false };
