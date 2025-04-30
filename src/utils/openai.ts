@@ -29,7 +29,8 @@ export const callOpenAIChat = async (
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: openAIMessages
-      })
+      }),
+      credentials: 'include' // Include credentials for all API calls
     });
 
     if (!response.ok) {

@@ -13,6 +13,7 @@ interface ChatViewProps {
     googleId: string;
     name?: string;
     picture?: string;
+    email?: string;
   };
 }
 
@@ -130,9 +131,16 @@ const ChatView = ({ user }: ChatViewProps) => {
               className="w-8 h-8 rounded-full"
             />
           )}
-          <h1 className="text-lg font-medium text-gray-900 dark:text-white">
-            {user.name || "AI Assistant"}
-          </h1>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-medium text-gray-900 dark:text-white">
+              {user.name || "AI Assistant"}
+            </h1>
+            {user.email && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {user.email}
+              </p>
+            )}
+          </div>
         </div>
         <button 
           onClick={logout}

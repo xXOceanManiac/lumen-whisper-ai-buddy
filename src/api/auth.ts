@@ -1,3 +1,4 @@
+
 // Authentication API utilities
 
 interface User {
@@ -7,12 +8,12 @@ interface User {
   picture?: string;
 }
 
-const API_BASE_URL = "https://lumen-backend-main.onrender.com";
+const API_BASE_URL = "https://lumen-backend.onrender.com";
 
 export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number; errorType?: string }> {
   try {
     console.log("Checking authentication status...");
-    const response = await fetch(`${API_BASE_URL}/auth/whoami`, {
+    const response = await fetch(`${API_BASE_URL}/auth/check-session`, {
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
@@ -23,8 +24,17 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
     
     if (response.ok) {
       const data = await response.json();
-      console.log("Authentication successful, user data received");
-      return { authenticated: true, user: data.user, statusCode: response.status };
+      console.log("Authentication successful, user data received:", data);
+      return { 
+        authenticated: true, 
+        user: {
+          googleId: data.googleId,
+          email: data.email,
+          name: data.name,
+          picture: data.picture
+        },
+        statusCode: response.status 
+      };
     }
     
     // Return specific error type based on status code
@@ -64,6 +74,5 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
 export const googleLoginUrl = `${API_BASE_URL}/auth/google`;
 
 export function logout(): void {
-  // Redirect to logout endpoint or clear local state
   window.location.href = `${API_BASE_URL}/auth/logout`;
 }
