@@ -106,7 +106,7 @@ const LoginView = () => {
           
           {error === "NETWORK_ERROR" && (
             <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-              Note: The authentication server at lumen-backend-main.onrender.com might be in sleep mode and taking time to wake up. Please be patient and retry in a moment.
+              Note: The authentication server at lumen-backend-main.fly.dev might be taking time to respond. Please be patient and retry in a moment.
             </p>
           )}
         </div>

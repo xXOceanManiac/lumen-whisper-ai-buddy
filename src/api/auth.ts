@@ -1,3 +1,4 @@
+
 // Authentication API utilities
 
 interface User {
@@ -7,7 +8,7 @@ interface User {
   picture?: string;
 }
 
-const API_BASE_URL = "https://lumen-backend-main.onrender.com";
+const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
 export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number; errorType?: string }> {
   try {
@@ -18,7 +19,8 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
     const response = await fetch(`${API_BASE_URL}/auth/whoami`, {
-      credentials: 'include',
+      method: 'GET',
+      credentials: 'include', // Required to include session cookie
       headers: {
         'Accept': 'application/json',
       },
@@ -31,7 +33,7 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
     
     if (response.ok) {
       const data = await response.json();
-      console.log("Authentication successful, user data received");
+      console.log("✅ Logged in as", data.user);
       return { authenticated: true, user: data.user, statusCode: response.status };
     }
     
@@ -54,7 +56,8 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
 export async function getOpenAIKey(googleId: string): Promise<string | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/get-openai-key?googleId=${googleId}`, {
-      credentials: 'include',
+      method: 'GET',
+      credentials: 'include', // Required to include session cookie
     });
     
     if (response.ok) {
