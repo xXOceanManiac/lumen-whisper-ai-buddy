@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { googleLoginUrl } from "@/api/auth";
+import { googleLoginUrl, logout } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
@@ -15,12 +15,9 @@ const LogoutView = () => {
     const performLogout = async () => {
       try {
         setIsLoggingOut(true);
-        const response = await fetch('https://lumen-backend-main.fly.dev/auth/logout', {
-          method: 'GET',
-          credentials: 'include' // Required to include session cookie
-        });
+        const success = await logout();
         
-        if (response.ok) {
+        if (success) {
           toast({
             title: "Signed Out",
             description: "You've been successfully signed out.",
