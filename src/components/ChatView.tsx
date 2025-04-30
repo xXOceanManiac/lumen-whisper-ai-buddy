@@ -1,12 +1,12 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callOpenAIChat } from "@/utils/openai";
-import { getOpenAIKey, logout } from "@/api/auth";
+import { getOpenAIKey } from "@/api/auth";
 import { Send, LogOut } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface ChatViewProps {
   user: {
@@ -23,6 +23,7 @@ const ChatView = ({ user }: ChatViewProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [openaiKey, setOpenaiKey] = useState<string | null>(null);
   
+  const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -60,6 +61,10 @@ const ChatView = ({ user }: ChatViewProps) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+  
+  const handleLogout = () => {
+    navigate('/logout');
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,7 +148,7 @@ const ChatView = ({ user }: ChatViewProps) => {
           </div>
         </div>
         <button 
-          onClick={logout}
+          onClick={handleLogout}
           className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           aria-label="Logout"
         >

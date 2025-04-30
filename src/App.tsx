@@ -3,11 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./contexts/AuthContext";
 import LoginView from "./components/LoginView";
 import ChatView from "./components/ChatView";
+import LogoutView from "./components/LogoutView";
 import { AnimatePresence } from "framer-motion";
 
 const queryClient = new QueryClient();
@@ -31,11 +32,20 @@ const AuthenticatedApp = () => {
 
   return (
     <AnimatePresence mode="wait">
-      {isAuthenticated && user ? (
-        <ChatView user={user} />
-      ) : (
-        <LoginView />
-      )}
+      <Routes>
+        <Route path="/logout" element={<LogoutView />} />
+        <Route
+          path="/"
+          element={
+            isAuthenticated && user ? (
+              <ChatView user={user} />
+            ) : (
+              <LoginView />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AnimatePresence>
   );
 };

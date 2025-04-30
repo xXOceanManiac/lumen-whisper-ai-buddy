@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 
 interface User {
@@ -74,7 +73,16 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
 
 export const googleLoginUrl = `${API_BASE_URL}/auth/google`;
 
-export function logout(): void {
-  // Redirect to logout endpoint or clear local state
-  window.location.href = `${API_BASE_URL}/auth/logout`;
+export async function logout(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'GET',
+      credentials: 'include' // Required to include session cookie
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error("Logout error:", error);
+    return false;
+  }
 }
