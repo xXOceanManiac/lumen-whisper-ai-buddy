@@ -2,52 +2,25 @@
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callOpenAIChat } from "@/utils/openai";
-import { getOpenAIKey } from "@/api/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Send, LogOut } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
-interface ChatViewProps {
-  user: {
-    googleId: string;
-    name?: string;
-    picture?: string;
-    email?: string;
-  };
-}
-
-const ChatView = ({ user }: ChatViewProps) => {
+const ChatView = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [openaiKey, setOpenaiKey] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user, openaiKey } = useAuth();
 
-  // Fetch OpenAI key on component mount
+  // Add initial greeting message
   useEffect(() => {
-    const fetchOpenAIKey = async () => {
-      if (user.googleId) {
-        const key = await getOpenAIKey(user.googleId);
-        setOpenaiKey(key);
-        
-        if (!key) {
-          toast({
-            title: "API Key Missing",
-            description: "Could not retrieve your OpenAI API key.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-    
-    fetchOpenAIKey();
-    
-    // Add initial greeting message
     setMessages([
       {
         id: "welcome",
@@ -56,7 +29,7 @@ const ChatView = ({ user }: ChatViewProps) => {
         timestamp: Date.now()
       }
     ]);
-  }, [user.googleId]);
+  }, []);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -130,7 +103,7 @@ const ChatView = ({ user }: ChatViewProps) => {
       {/* Chat Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2">
-          {user.picture && (
+          {user?.picture && (
             <img 
               src={user.picture} 
               alt={user.name || "User"} 
@@ -139,9 +112,9 @@ const ChatView = ({ user }: ChatViewProps) => {
           )}
           <div className="flex flex-col">
             <h1 className="text-lg font-medium text-gray-900 dark:text-white">
-              {user.name || "AI Assistant"}
+              {user?.name || "AI Assistant"}
             </h1>
-            {user.email && (
+            {user?.email && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user.email}
               </p>

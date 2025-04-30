@@ -1,8 +1,7 @@
 
-import { Github } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { googleLoginUrl } from "@/api/auth";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";

@@ -1,6 +1,6 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { checkAuth } from "@/api/auth";
+import { checkAuth, getOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 
 interface User {
@@ -13,17 +13,25 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  openaiKey: string | null;
   isLoading: boolean;
   error: string | null;
   lastAuthCheck: number | null;
+  hasCompletedOnboarding: boolean;
+  setOpenaiKey: (key: string) => void;
+  setHasCompletedOnboarding: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
+  openaiKey: null,
   isLoading: true,
   error: null,
-  lastAuthCheck: null
+  lastAuthCheck: null,
+  hasCompletedOnboarding: false,
+  setOpenaiKey: () => {},
+  setHasCompletedOnboarding: () => {}
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -31,9 +39,11 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [openaiKey, setOpenaiKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastAuthCheck, setLastAuthCheck] = useState<number | null>(null);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -69,8 +79,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               description: `Welcome, ${user.name || 'User'}!`,
             });
           }
+          
+          // Fetch OpenAI API key
+          const apiKey = await getOpenAIKey(user.googleId);
+          setOpenaiKey(apiKey);
+          setHasCompletedOnboarding(apiKey !== null);
         } else {
           setUser(null);
+          setOpenaiKey(null);
           // Use the specific error type
           setError(errorType || "AUTH_FAILED");
           console.log(`Authentication failed: ${errorType || "AUTH_FAILED"}`);
@@ -86,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (err) {
         setUser(null);
+        setOpenaiKey(null);
         setError("UNEXPECTED_ERROR");
         console.error("Unexpected authentication verification error:", err);
         
@@ -104,7 +121,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, error, lastAuthCheck }}>
+    <AuthContext.Provider 
+      value={{ 
+        isAuthenticated, 
+        user, 
+        openaiKey,
+        isLoading, 
+        error, 
+        lastAuthCheck,
+        hasCompletedOnboarding,
+        setOpenaiKey,
+        setHasCompletedOnboarding
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

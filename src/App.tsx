@@ -4,17 +4,17 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { useAuth } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginView from "./components/LoginView";
 import ChatView from "./components/ChatView";
+import OnboardingView from "./components/OnboardingView";
 import LogoutView from "./components/LogoutView";
 import { AnimatePresence } from "framer-motion";
 
 const queryClient = new QueryClient();
 
 const AuthenticatedApp = () => {
-  const { isAuthenticated, user, isLoading, error } = useAuth();
+  const { isAuthenticated, user, isLoading, error, openaiKey, hasCompletedOnboarding } = useAuth();
 
   if (isLoading) {
     return (
@@ -28,7 +28,7 @@ const AuthenticatedApp = () => {
   }
 
   // Log authentication state to help with debugging
-  console.log("Auth state:", { isAuthenticated, hasUser: !!user, error });
+  console.log("Auth state:", { isAuthenticated, hasUser: !!user, error, hasCompletedOnboarding });
 
   return (
     <AnimatePresence mode="wait">
@@ -38,7 +38,11 @@ const AuthenticatedApp = () => {
           path="/"
           element={
             isAuthenticated && user ? (
-              <ChatView user={user} />
+              hasCompletedOnboarding ? (
+                <ChatView user={user} />
+              ) : (
+                <OnboardingView />
+              )
             ) : (
               <LoginView />
             )

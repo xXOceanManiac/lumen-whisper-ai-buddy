@@ -5,6 +5,7 @@ import { googleLoginUrl, logout } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LogoutView = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(true);

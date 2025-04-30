@@ -72,6 +72,24 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
   }
 }
 
+export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
+      method: 'POST',
+      credentials: 'include', // Required to include session cookie
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ googleId, openaiApiKey: apiKey })
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to save OpenAI API key:", error);
+    return false;
+  }
+}
+
 export const googleLoginUrl = `${API_BASE_URL}/auth/google`;
 
 export async function logout(): Promise<boolean> {
