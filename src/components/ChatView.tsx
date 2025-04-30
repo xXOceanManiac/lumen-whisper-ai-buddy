@@ -9,7 +9,18 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
-const ChatView = () => {
+interface User {
+  googleId: string;
+  name?: string;
+  email?: string;
+  picture?: string;
+}
+
+interface ChatViewProps {
+  user?: User; // Making the user prop optional
+}
+
+const ChatView = ({ user }: ChatViewProps = {}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,7 +28,11 @@ const ChatView = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { user, openaiKey } = useAuth();
+  const { openaiKey } = useAuth();
+  
+  // Ensure we're using the user from props or from auth context
+  const { user: authUser } = useAuth();
+  const currentUser = user || authUser;
 
   // Add initial greeting message
   useEffect(() => {
@@ -103,20 +118,20 @@ const ChatView = () => {
       {/* Chat Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2">
-          {user?.picture && (
+          {currentUser?.picture && (
             <img 
-              src={user.picture} 
-              alt={user.name || "User"} 
+              src={currentUser.picture} 
+              alt={currentUser.name || "User"} 
               className="w-8 h-8 rounded-full"
             />
           )}
           <div className="flex flex-col">
             <h1 className="text-lg font-medium text-gray-900 dark:text-white">
-              {user?.name || "AI Assistant"}
+              {currentUser?.name || "AI Assistant"}
             </h1>
-            {user?.email && (
+            {currentUser?.email && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user.email}
+                {currentUser.email}
               </p>
             )}
           </div>

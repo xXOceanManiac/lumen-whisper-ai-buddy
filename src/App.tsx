@@ -39,7 +39,7 @@ const AuthenticatedApp = () => {
           element={
             isAuthenticated && user ? (
               hasCompletedOnboarding ? (
-                <ChatView user={user} />
+                <ChatView />
               ) : (
                 <OnboardingView />
               )
