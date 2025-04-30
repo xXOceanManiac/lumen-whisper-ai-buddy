@@ -2,8 +2,12 @@
 import { Github } from "lucide-react";
 import { googleLoginUrl } from "@/api/auth";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const LoginView = () => {
+  const { error } = useAuth();
+  
   return (
     <motion.div 
       className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-purple-100 to-white dark:from-gray-900 dark:to-gray-800 p-4"
@@ -20,6 +24,13 @@ const LoginView = () => {
             Your AI assistant powered by OpenAI
           </p>
         </div>
+
+        {error && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>Authentication Error. Try Again</AlertDescription>
+          </Alert>
+        )}
 
         <div className="mt-8">
           <a

@@ -50,11 +50,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(authenticated);
         if (authenticated && user) {
           setUser(user);
+          setError(null);
         } else {
           setUser(null);
+          setError("Authentication Error");
         }
       } catch (err) {
-        setError("Failed to verify authentication status.");
+        setError("Authentication Error");
         console.error("Auth verification error:", err);
       } finally {
         setIsLoading(false);
