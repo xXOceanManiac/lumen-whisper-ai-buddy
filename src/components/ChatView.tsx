@@ -84,7 +84,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         return;
       }
       
-      // Call OpenAI API
+      // Call our updated API function that now uses the backend
       const response = await callOpenAIChat([...messages, userMessage], openaiKey);
       
       if (response.success && response.data) {
