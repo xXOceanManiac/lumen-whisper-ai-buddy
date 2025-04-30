@@ -1,7 +1,8 @@
+
 import { CalendarEvent } from "@/types";
 import { getRememberAuth } from "@/utils/localStorage";
 
-const API_BASE_URL = "https://lumen-backend-main.onrender.com";
+const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
 export const createCalendarEvent = async (
   event: CalendarEvent,
@@ -17,6 +18,7 @@ export const createCalendarEvent = async (
         event,
         apiKey,
       }),
+      credentials: 'include', // Required for session cookies
     });
 
     if (!response.ok) {
@@ -60,6 +62,7 @@ export const checkGoogleCalendarAuth = async (apiKey: string): Promise<boolean> 
       body: JSON.stringify({
         apiKey,
       }),
+      credentials: 'include', // Required for session cookies
     });
     
     if (!response.ok) {

@@ -1,6 +1,7 @@
+
 import { Message } from "@/types";
 
-const API_BASE_URL = "https://lumen-backend-main.onrender.com";
+const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
 export const callChatApi = async (
   messages: Message[],
@@ -23,6 +24,7 @@ export const callChatApi = async (
         messages: formattedMessages,
         apiKey,
       }),
+      credentials: 'include', // Required for session cookies
     });
 
     if (!response.ok) {
