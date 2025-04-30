@@ -17,9 +17,11 @@ const AuthenticatedApp = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        <span className="ml-2 text-gray-600 dark:text-gray-300">Loading...</span>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-purple-100 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
+          <p className="text-lg text-gray-600 dark:text-gray-300">Checking authentication...</p>
+        </div>
       </div>
     );
   }

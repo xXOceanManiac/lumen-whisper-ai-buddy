@@ -12,7 +12,7 @@ const API_BASE_URL = "https://lumen-backend-main.onrender.com";
 
 export async function checkAuth(): Promise<{ authenticated: boolean; user?: User }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/me`, {
+    const response = await fetch(`${API_BASE_URL}/auth/whoami`, {
       credentials: 'include',
       headers: {
         'Accept': 'application/json',

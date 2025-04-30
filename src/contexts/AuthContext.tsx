@@ -34,6 +34,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const verifyAuth = async () => {
       try {
+        // Check if we just got redirected from successful Google login
+        const urlParams = new URLSearchParams(window.location.search);
+        const googleSuccess = urlParams.get('google') === 'success';
+        
+        // If we just got redirected from successful Google login, clear the URL parameter
+        if (googleSuccess) {
+          // Clean up URL without refreshing the page
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        // Check authentication status
         const { authenticated, user } = await checkAuth();
         
         setIsAuthenticated(authenticated);
