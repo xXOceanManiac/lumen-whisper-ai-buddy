@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 const LoginView = () => {
   const { error, lastAuthCheck } = useAuth();
   const [showRetryButton, setShowRetryButton] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   
   // Function to get appropriate error message based on error code
   const getErrorMessage = (errorCode: string | null) => {
@@ -21,7 +22,7 @@ const LoginView = () => {
       case "SERVER_ERROR":
         return "Unable to connect to authentication server. Please try again later.";
       case "NETWORK_ERROR":
-        return "Network error. Please check your connection and try again.";
+        return "Network error when connecting to authentication server. Please check your connection and try again.";
       default:
         return "An unknown error occurred. Please try again.";
     }
@@ -37,6 +38,8 @@ const LoginView = () => {
   
   // Function to retry authentication
   const handleRetry = () => {
+    setIsRetrying(true);
+    // Reload page to retry authentication
     window.location.reload();
   };
 
@@ -59,16 +62,17 @@ const LoginView = () => {
 
         {error && (
           <Alert variant="destructive" className="mt-4">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              {getErrorMessage(error)}
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription className="flex flex-col items-center">
+              <span>{getErrorMessage(error)}</span>
               {showRetryButton && (
-                <button 
+                <Button 
                   onClick={handleRetry}
-                  className="block mt-2 mx-auto px-4 py-1 bg-white dark:bg-gray-800 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="mt-2"
+                  disabled={isRetrying}
                 >
-                  Retry Connection
-                </button>
+                  {isRetrying ? "Retrying..." : "Retry Connection"}
+                </Button>
               )}
             </AlertDescription>
           </Alert>
@@ -99,6 +103,12 @@ const LoginView = () => {
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
             Sign in to start chatting with your AI assistant
           </p>
+          
+          {error === "NETWORK_ERROR" && (
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              Note: The authentication server at lumen-backend-main.onrender.com might be in sleep mode and taking time to wake up. Please be patient and retry in a moment.
+            </p>
+          )}
         </div>
       </div>
     </motion.div>

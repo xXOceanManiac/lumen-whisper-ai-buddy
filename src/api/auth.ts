@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 
 interface User {
@@ -13,12 +12,20 @@ const API_BASE_URL = "https://lumen-backend-main.onrender.com";
 export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number; errorType?: string }> {
   try {
     console.log("Checking authentication status...");
+    
+    // Add timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
     const response = await fetch(`${API_BASE_URL}/auth/whoami`, {
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     console.log("Auth check response status:", response.status);
     
