@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
-import { callOpenAIChat } from "@/utils/openai";
+import { callChatApi } from "@/api/chat";
 import { useAuth } from "@/contexts/AuthContext";
 import { Send, LogOut, RefreshCw } from "lucide-react";
 import ChatMessage from "./ChatMessage";
@@ -94,17 +94,23 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         return;
       }
       
-      // Call OpenAI API
-      const response = await callOpenAIChat([...messages, userMessage], openaiKey);
+      // Call backend Chat API instead of OpenAI directly
+      const response = await callChatApi([...messages, userMessage], openaiKey);
       
-      if (response.success && response.data) {
-        setMessages(prev => [...prev, response.data]);
-      } else {
-        toast({
-          title: "Error",
-          description: response.error || "Failed to get a response from AI.",
-          variant: "destructive",
-        });
+      // Create assistant message from response
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: response.content,
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      // Handle calendar event if present
+      if (response.calendarEvent) {
+        // You can add calendar event handling here in the future
+        console.log("Calendar event detected:", response.calendarEvent);
       }
     } catch (error) {
       console.error("Error sending message:", error);
