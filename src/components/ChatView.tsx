@@ -87,7 +87,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       if (!openaiKey) {
         toast({
           title: "API Key Required",
-          description: "OpenAI API key not found. Please try logging in again or refresh your key.",
+          description: "No OpenAI API key found. Please refresh your key or check your account settings.",
           variant: "destructive",
         });
         setIsProcessing(false);
