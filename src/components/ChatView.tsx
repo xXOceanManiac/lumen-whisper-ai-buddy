@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callOpenAIChat } from "@/utils/openai";
 import { useAuth } from "@/contexts/AuthContext";
-import { Send, LogOut } from "lucide-react";
+import { Send, LogOut, RefreshCw } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -24,11 +24,12 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRefreshingKey, setIsRefreshingKey] = useState(false);
   
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { openaiKey } = useAuth();
+  const { openaiKey, refreshOpenAIKey } = useAuth();
   
   // Ensure we're using the user from props or from auth context
   const { user: authUser } = useAuth();
@@ -54,6 +55,15 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const handleLogout = () => {
     navigate('/logout');
   };
+
+  const handleRefreshApiKey = async () => {
+    setIsRefreshingKey(true);
+    try {
+      await refreshOpenAIKey();
+    } finally {
+      setIsRefreshingKey(false);
+    }
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,14 +87,14 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       if (!openaiKey) {
         toast({
           title: "API Key Required",
-          description: "OpenAI API key not found. Please try logging in again.",
+          description: "OpenAI API key not found. Please try logging in again or refresh your key.",
           variant: "destructive",
         });
         setIsProcessing(false);
         return;
       }
       
-      // Call our updated API function that now uses the backend
+      // Call OpenAI API
       const response = await callOpenAIChat([...messages, userMessage], openaiKey);
       
       if (response.success && response.data) {
@@ -136,14 +146,25 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
             )}
           </div>
         </div>
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          aria-label="Logout"
-        >
-          <LogOut size={18} />
-          <span className="text-sm">Logout</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefreshApiKey}
+            disabled={isRefreshingKey}
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-2 disabled:opacity-50"
+            aria-label="Refresh API Key"
+          >
+            <RefreshCw size={18} className={isRefreshingKey ? "animate-spin" : ""} />
+            <span className="text-sm">Refresh Key</span>
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            aria-label="Logout"
+          >
+            <LogOut size={18} />
+            <span className="text-sm">Logout</span>
+          </button>
+        </div>
       </header>
       
       {/* Chat Messages */}

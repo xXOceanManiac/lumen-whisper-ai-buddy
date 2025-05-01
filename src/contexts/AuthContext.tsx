@@ -20,6 +20,7 @@ interface AuthContextType {
   hasCompletedOnboarding: boolean;
   setOpenaiKey: (key: string) => void;
   setHasCompletedOnboarding: (value: boolean) => void;
+  refreshOpenAIKey: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -31,7 +32,8 @@ const AuthContext = createContext<AuthContextType>({
   lastAuthCheck: null,
   hasCompletedOnboarding: false,
   setOpenaiKey: () => {},
-  setHasCompletedOnboarding: () => {}
+  setHasCompletedOnboarding: () => {},
+  refreshOpenAIKey: async () => false
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -45,6 +47,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [lastAuthCheck, setLastAuthCheck] = useState<number | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const { toast } = useToast();
+
+  // Function to fetch OpenAI API key
+  const fetchOpenAIKey = async (userId: string): Promise<boolean> => {
+    try {
+      const apiKey = await getOpenAIKey(userId);
+      setOpenaiKey(apiKey);
+      setHasCompletedOnboarding(apiKey !== null);
+      return apiKey !== null;
+    } catch (error) {
+      console.error("Error fetching OpenAI API key:", error);
+      return false;
+    }
+  };
+
+  // Function to refresh the OpenAI API key
+  const refreshOpenAIKey = async (): Promise<boolean> => {
+    if (!user?.googleId) return false;
+    
+    try {
+      const success = await fetchOpenAIKey(user.googleId);
+      
+      if (success) {
+        toast({
+          title: "API Key Refreshed",
+          description: "Your OpenAI API key has been refreshed successfully.",
+        });
+        return true;
+      } else {
+        toast({
+          title: "API Key Not Found",
+          description: "No API key found for your account.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh your API key. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -81,9 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           
           // Fetch OpenAI API key
-          const apiKey = await getOpenAIKey(user.googleId);
-          setOpenaiKey(apiKey);
-          setHasCompletedOnboarding(apiKey !== null);
+          await fetchOpenAIKey(user.googleId);
         } else {
           setUser(null);
           setOpenaiKey(null);
@@ -131,7 +175,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastAuthCheck,
         hasCompletedOnboarding,
         setOpenaiKey,
-        setHasCompletedOnboarding
+        setHasCompletedOnboarding,
+        refreshOpenAIKey
       }}
     >
       {children}
