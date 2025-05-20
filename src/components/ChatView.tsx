@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -68,9 +67,11 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const handleRefreshApiKey = async () => {
     setIsRefreshingKey(true);
     try {
+      console.log("🔄 Starting OpenAI key refresh");
       const success = await refreshOpenAIKey();
       if (success) {
         console.log("✅ OpenAI key refreshed successfully");
+        console.log("🔑 Current openaiKey after refresh:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
       } else {
         console.log("❌ Failed to refresh OpenAI key");
       }
@@ -83,7 +84,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     e.preventDefault();
     
     console.log("🔥 handleSubmit triggered");
-    console.log("🧪 openaiKey present at submit:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
+    console.log("🔑 openaiKey present at submit:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
     
     if (!input.trim() || isProcessing) {
       console.log("❌ Empty input or already processing, cancelling submission");

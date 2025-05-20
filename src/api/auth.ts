@@ -55,6 +55,8 @@ export async function checkAuth(): Promise<{ authenticated: boolean; user?: User
 
 export async function getOpenAIKey(googleId: string): Promise<string | null> {
   try {
+    console.log(`🔄 Fetching OpenAI key for googleId: ${googleId}`);
+    
     const response = await fetch(`${API_BASE_URL}/api/get-openai-key?googleId=${googleId}`, {
       method: 'GET',
       credentials: 'include', // Required to include session cookie
@@ -62,12 +64,20 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
     
     if (response.ok) {
       const data = await response.json();
-      return data.apiKey;
+      
+      if (data.apiKey) {
+        console.log(`✅ Successfully retrieved OpenAI key: ${data.apiKey.slice(0, 5)}...`);
+        return data.apiKey;
+      } else {
+        console.log("❌ API key not found in response data");
+        return null;
+      }
+    } else {
+      console.error(`❌ Failed to get OpenAI key: ${response.status}`);
+      return null;
     }
-    
-    return null;
   } catch (error) {
-    console.error("Failed to fetch OpenAI API key:", error);
+    console.error("❌ Error fetching OpenAI API key:", error);
     return null;
   }
 }
