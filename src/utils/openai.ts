@@ -6,6 +6,7 @@ export const callOpenAIChat = async (
   apiKey: string,
 ): Promise<{ success: boolean; data?: Message; error?: string }> => {
   if (!apiKey) {
+    console.error("❌ OpenAI API key is missing");
     return { 
       success: false, 
       error: 'OpenAI API key is required.' 
@@ -13,11 +14,21 @@ export const callOpenAIChat = async (
   }
 
   try {
+    console.log("🔄 Preparing OpenAI API call with", messages.length, "messages");
+    
     // Convert our Message format to OpenAI's format
     const openAIMessages = messages.map(msg => ({
       role: msg.role,
       content: msg.content
     }));
+
+    // Prepare for OpenAI API call
+    console.log("📤 Calling OpenAI API with:", {
+      model: 'gpt-4o-mini',
+      messageCount: openAIMessages.length,
+      apiKeyPresent: !!apiKey,
+      apiKeyLength: apiKey ? apiKey.length : 0, // Log length only, not the key itself
+    });
 
     // Call OpenAI's API with the user's API key
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -35,11 +46,19 @@ export const callOpenAIChat = async (
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.message || 'Failed to connect to OpenAI API');
+      const errorMessage = errorData.error?.message || 'Failed to connect to OpenAI API';
+      console.error(`❌ OpenAI API Error (${response.status}):`, errorMessage);
+      throw new Error(errorMessage);
     }
 
+    console.log("✅ OpenAI API response received successfully");
     const data = await response.json();
     const content = data.choices[0]?.message?.content || '';
+
+    console.log("📥 Received OpenAI response:", {
+      responseLength: content.length,
+      previewContent: content.substring(0, 50) + "...",
+    });
 
     const assistantMessage: Message = {
       id: Date.now().toString(),
@@ -50,7 +69,7 @@ export const callOpenAIChat = async (
 
     return { success: true, data: assistantMessage };
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('❌ Error calling OpenAI API:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'An unknown error occurred'

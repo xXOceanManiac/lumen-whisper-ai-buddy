@@ -68,7 +68,12 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!input.trim() || isProcessing) return;
+    console.log("🔥 handleSubmit triggered");
+    
+    if (!input.trim() || isProcessing) {
+      console.log("❌ Empty input or already processing, cancelling submission");
+      return;
+    }
     
     // Add user message
     const userMessage: Message = {
@@ -85,6 +90,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     try {
       // Check if we have OpenAI API key
       if (!openaiKey) {
+        console.error("❌ No OpenAI API key found");
         toast({
           title: "API Key Required",
           description: "No OpenAI API key found. Please refresh your key or check your account settings.",
@@ -96,21 +102,39 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       
       // Get the user's googleId
       const googleId = currentUser?.googleId;
-      console.log("Current user for API call:", currentUser);
-      console.log("Sending to /api/chat:", {
-        googleId: googleId,
+      
+      if (!googleId) {
+        console.error("❌ No googleId available for chat API call");
+        toast({
+          title: "Authentication Error",
+          description: "User ID not found. Please try logging out and back in.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Detailed logging of the message submission
+      console.log("📩 Submitting message with:", {
+        googleId,
+        input,
         messages: [...messages, userMessage].map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content.substring(0, 50) + (msg.content.length > 50 ? "..." : "")
         }))
       });
       
-      if (!googleId) {
-        console.warn("No googleId available for chat API call");
-      }
+      // Log the user object for debugging
+      console.log("👤 Current user:", {
+        googleId: currentUser?.googleId,
+        name: currentUser?.name,
+        email: currentUser?.email?.substring(0, 3) + "***" // Partial email for privacy
+      });
       
       // Call backend Chat API with googleId
+      console.log("🔄 Calling chat API...");
       const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
+      console.log("✅ Chat API response received");
       
       // Create assistant message from response
       const assistantMessage: Message = {
@@ -125,10 +149,10 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       // Handle calendar event if present
       if (response.calendarEvent) {
         // You can add calendar event handling here in the future
-        console.log("Calendar event detected:", response.calendarEvent);
+        console.log("📅 Calendar event detected:", response.calendarEvent);
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",

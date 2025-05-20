@@ -16,17 +16,28 @@ export const callChatApi = async (
       content: msg.content
     }));
 
-    // Log the googleId value before creating the payload
-    console.log("Chat API using googleId:", googleId);
+    // Check if googleId exists
+    if (!googleId) {
+      console.error("❌ Missing googleId in callChatApi");
+      throw new Error("googleId is required for chat API calls");
+    }
+    
+    // Log the detailed request payload
+    console.log("📩 Sending to /api/chat:", {
+      googleId,
+      messageCount: formattedMessages.length,
+      firstMessage: formattedMessages[0]?.content.substring(0, 50) + "...",
+      lastMessage: formattedMessages[formattedMessages.length - 1]?.content.substring(0, 50) + "..."
+    });
     
     // Create the payload according to the required format
     const payload = {
-      googleId: googleId || "test-id-123", // Use provided googleId or fallback to test ID
+      googleId,
       messages: formattedMessages,
       apiKey,
     };
-    
-    console.log("Sending payload to /api/chat:", payload);
+
+    console.log(`🔄 API request to ${API_BASE_URL}/api/chat initiated`);
 
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: "POST",
@@ -38,9 +49,12 @@ export const callChatApi = async (
     });
 
     if (!response.ok) {
-      throw new Error("Failed to get chat response");
+      const errorText = await response.text();
+      console.error(`❌ API Error (${response.status}):`, errorText);
+      throw new Error(`Failed to get chat response: ${response.status} ${errorText}`);
     }
 
+    console.log("✅ API response received successfully");
     const data = await response.json();
     
     // Parse the response for calendar events
@@ -55,6 +69,7 @@ export const callChatApi = async (
           const parsedEvent = JSON.parse(jsonStr);
           if (parsedEvent.type === 'calendar') {
             calendarEvent = parsedEvent;
+            console.log("📅 Calendar event detected:", parsedEvent.title);
           }
         }
       }
@@ -67,7 +82,7 @@ export const callChatApi = async (
       calendarEvent 
     };
   } catch (error) {
-    console.error("Error calling chat API:", error);
+    console.error("❌ Error calling chat API:", error);
     throw error;
   }
 };
