@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { checkAuth, getOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -112,6 +111,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       } else {
         console.log("❌ No OpenAI key found for user");
+        // Important: We do NOT clear the existing key if the fetch fails
+        // This allows fallback to locally stored key
         return false;
       }
     } catch (error) {
@@ -135,19 +136,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         return true;
       } else {
-        toast({
-          title: "API Key Not Found",
-          description: "No API key found for your account.",
-          variant: "destructive",
-        });
+        // Don't show error toast here since we're falling back to the local key
+        console.log("⚠️ Could not refresh API key from server, using locally stored key");
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to refresh your API key. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Error refreshing OpenAI API key:", error);
       return false;
     }
   };

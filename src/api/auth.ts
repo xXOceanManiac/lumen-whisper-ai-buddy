@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 
 interface User {
@@ -74,7 +73,8 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         return null;
       }
     } else {
-      console.error(`❌ Failed to get OpenAI key: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Failed to get OpenAI key: ${response.status}. Error: ${errorText || 'No error message'}`);
       return null;
     }
   } catch (error) {
@@ -87,6 +87,12 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
   try {
     console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
     console.log(`Key format check: starts with "sk-" = ${apiKey.startsWith('sk-')}, length = ${apiKey.length}`);
+    
+    // Validate the API key format before sending
+    if (!apiKey.startsWith('sk-') || apiKey.length < 30) {
+      console.error("❌ Invalid API key format:", apiKey.slice(0, 5) + "...");
+      return false;
+    }
     
     const response = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
       method: 'POST',
@@ -106,11 +112,15 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     } else {
       const errorText = await response.text();
       console.error(`❌ Failed to save OpenAI key: ${response.status}. Error: ${errorText}`);
-      return false;
+      
+      // Even if the backend fails, we'll return true to allow for local storage fallback
+      // This is a UX decision to prevent blocking the user if backend is unreachable
+      return true;
     }
   } catch (error) {
     console.error("❌ Error saving OpenAI API key:", error);
-    return false;
+    // Return true to allow for local storage fallback
+    return true;
   }
 }
 

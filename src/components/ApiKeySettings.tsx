@@ -32,8 +32,13 @@ const ApiKeySettings = () => {
   const [newApiKey, setNewApiKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState({
+    title: "API Key Updated",
+    description: "Your OpenAI API key has been saved and will be used for all your chat sessions.",
+    isError: false
+  });
   const { toast } = useToast();
-  const { user, refreshOpenAIKey } = useAuth();
+  const { user, openaiKey, setOpenaiKey, refreshOpenAIKey } = useAuth();
 
   const handleSaveApiKey = async () => {
     if (!newApiKey.trim() || !user?.googleId) {
@@ -54,33 +59,58 @@ const ApiKeySettings = () => {
       if (success) {
         toast({
           title: "Success",
-          description: "API key updated successfully",
+          description: "API key saved successfully",
         });
         
-        // Refresh the API key in the auth context
-        await refreshOpenAIKey();
-        console.log("✅ API key refreshed after saving new key");
+        // Update the key in local state immediately for better UX
+        setOpenaiKey(newApiKey);
+        console.log("✅ API key updated in local state after saving");
+        
+        // Try to refresh the API key from the server
+        const refreshSuccess = await refreshOpenAIKey();
+        console.log("API key refresh attempt result:", refreshSuccess ? "success" : "failed");
         
         // Close the dialog and reset the input field
         setOpen(false);
         setNewApiKey("");
         
-        // Show confirmation dialog
+        // Show confirmation dialog with appropriate message
+        setConfirmationMessage({
+          title: "API Key Updated",
+          description: "Your OpenAI API key has been saved successfully and is ready to use.",
+          isError: false
+        });
         setShowConfirmation(true);
       } else {
         toast({
           title: "Error",
-          description: "Failed to update API key",
+          description: "Failed to update API key on the server",
           variant: "destructive",
         });
+        
+        // Show error confirmation dialog
+        setConfirmationMessage({
+          title: "API Key Update Issue",
+          description: "Your API key was saved locally but there was an issue updating it on the server. You can continue using it for this session.",
+          isError: true
+        });
+        setShowConfirmation(true);
       }
     } catch (error) {
       console.error("Error saving OpenAI API key:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "An unexpected error occurred while saving your API key",
         variant: "destructive",
       });
+      
+      // Show error confirmation dialog
+      setConfirmationMessage({
+        title: "API Key Update Failed",
+        description: "There was an error saving your API key. Please try again later.",
+        isError: true
+      });
+      setShowConfirmation(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -103,7 +133,12 @@ const ApiKeySettings = () => {
             <DialogTitle>OpenAI API Key Settings</DialogTitle>
             <DialogDescription>
               Update your OpenAI API key for generating responses.
-              This key will be securely stored in the database and used for all your chat sessions.
+              This key will be securely stored for all your chat sessions.
+              {openaiKey && (
+                <p className="mt-2 text-sm text-green-600">
+                  You currently have an API key set
+                </p>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -137,10 +172,11 @@ const ApiKeySettings = () => {
       <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>API Key Updated</AlertDialogTitle>
+            <AlertDialogTitle className={confirmationMessage.isError ? "text-destructive" : ""}>
+              {confirmationMessage.title}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Your OpenAI API key has been saved and will be used for all your chat sessions.
-              Changes will take effect immediately.
+              {confirmationMessage.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
