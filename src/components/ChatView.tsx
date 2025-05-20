@@ -29,10 +29,11 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { openaiKey, refreshOpenAIKey } = useAuth();
+  
+  // Use the AuthContext to get authentication data - fix the duplicate declaration
+  const { user: authUser, openaiKey, refreshOpenAIKey } = useAuth();
   
   // Ensure we're using the user from props or from auth context
-  const { user: authUser, openaiKey } = useAuth();
   const currentUser = user || authUser;
 
   // Add initial greeting message
