@@ -1,3 +1,4 @@
+
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
 
@@ -60,7 +61,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
     // Try fetching from Supabase first
     const { data: supabaseData, error: supabaseError } = await supabase
       .from('openai_keys')
-      .select('key_content, iv')
+      .select('key_content')
       .eq('google_id', googleId)
       .maybeSingle();
     
@@ -69,8 +70,15 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
     }
     
     if (supabaseData?.key_content) {
-      console.log(`✅ Successfully retrieved OpenAI key from Supabase`);
       const key = supabaseData.key_content.trim();
+      
+      // Validate key format
+      if (!key.startsWith('sk-')) {
+        console.error(`❌ Invalid API key format retrieved from Supabase: ${key.substring(0, 5)}...`);
+        return null;
+      }
+      
+      console.log(`✅ Successfully retrieved OpenAI key from Supabase (${key.length} chars)`);
       console.log(`Key format: ${key.substring(0, 5)}...${key.slice(-4)}`);
       return key;
     }
@@ -78,7 +86,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
     // If not in Supabase, fall back to backend API
     console.log(`⚠️ Key not found in Supabase, trying backend API`);
     
-    const response = await fetch(`${API_BASE_URL}/api/get-openai-key?googleId=${googleId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/get-openai-key?googleId=${encodeURIComponent(googleId)}`, {
       method: 'GET',
       credentials: 'include', // Required to include session cookie
     });
@@ -88,8 +96,15 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
       
       if (data.apiKey) {
         const key = data.apiKey.trim();
-        console.log(`✅ Successfully retrieved OpenAI key from API: ${key.substring(0, 5)}...${key.slice(-4)}`);
-        console.log(`Key length: ${key.length}`);
+        
+        // Validate key format
+        if (!key.startsWith('sk-')) {
+          console.error(`❌ Invalid API key format retrieved from API: ${key.substring(0, 5)}...`);
+          return null;
+        }
+        
+        console.log(`✅ Successfully retrieved OpenAI key from API (${key.length} chars)`);
+        console.log(`Key format: ${key.substring(0, 5)}...${key.slice(-4)}`);
         
         // Store the key in Supabase for future use
         try {
@@ -97,8 +112,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
             .from('openai_keys')
             .upsert({ 
               google_id: googleId, 
-              key_content: key,
-              iv: 'placeholder' // This would be replaced with actual encryption in production
+              key_content: key
             });
           
           if (error) {
@@ -129,7 +143,6 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
 export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<boolean> {
   try {
     console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
-    console.log(`Key format check: starts with "sk-" = ${apiKey.startsWith('sk-')}, length = ${apiKey.length}`);
     
     // Validate and trim the API key
     const trimmedKey = apiKey.trim();
@@ -138,14 +151,15 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
       return false;
     }
     
+    console.log(`Key format valid: starts with "sk-" = true, length = ${trimmedKey.length}`);
+    
     // Save to Supabase
     try {
       const { error } = await supabase
         .from('openai_keys')
         .upsert({ 
           google_id: googleId, 
-          key_content: trimmedKey,
-          iv: 'placeholder' // This would be replaced with actual encryption in production
+          key_content: trimmedKey
         });
       
       if (error) {

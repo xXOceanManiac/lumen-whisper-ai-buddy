@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -75,8 +73,7 @@ const ApiKeySettings = () => {
           .from('openai_keys')
           .upsert({ 
             google_id: user.googleId, 
-            key_content: trimmedKey,
-            iv: 'placeholder' // This would be replaced with actual encryption in production
+            key_content: trimmedKey
           });
         
         if (error) {

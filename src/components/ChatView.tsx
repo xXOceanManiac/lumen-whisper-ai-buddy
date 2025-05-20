@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -130,6 +129,27 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           id: "error-" + Date.now().toString(),
           role: "assistant",
           content: "Could not retrieve or use your OpenAI key. Please try reconnecting your key in settings.",
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        return;
+      }
+      
+      // Validate OpenAI API key format
+      if (!openaiKey.startsWith('sk-') || openaiKey.length < 30) {
+        console.error("❌ Invalid OpenAI API key format:", openaiKey.substring(0, 5) + "...");
+        toast({
+          title: "Invalid API Key",
+          description: "Your API key appears to be invalid. Please update it in settings.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        
+        // Add error message to chat
+        const errorMessage: Message = {
+          id: "error-" + Date.now().toString(),
+          role: "assistant",
+          content: "Your OpenAI API key appears to be invalid. Please update it in settings.",
           timestamp: Date.now()
         };
         setMessages(prev => [...prev, errorMessage]);
