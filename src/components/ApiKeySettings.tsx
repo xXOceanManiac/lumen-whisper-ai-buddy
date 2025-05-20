@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,17 @@ const ApiKeySettings = () => {
   const { toast } = useToast();
   const { user, openaiKey, setOpenaiKey, refreshOpenAIKey } = useAuth();
 
+  // Helper function to generate a simple IV for encryption purposes
+  const generateSimpleIV = (): string => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const length = 16; // Standard IV length
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+  };
+
   const handleSaveApiKey = async () => {
     if (!newApiKey.trim() || !user?.googleId) {
       toast({
@@ -69,11 +81,15 @@ const ApiKeySettings = () => {
       
       // First attempt to save in Supabase directly
       try {
+        // Generate a simple IV for encryption purposes
+        const iv = generateSimpleIV();
+        
         const { error } = await supabase
           .from('openai_keys')
           .upsert({ 
             google_id: user.googleId, 
-            key_content: trimmedKey
+            key_content: trimmedKey,
+            iv: iv
           });
         
         if (error) {

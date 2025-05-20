@@ -108,11 +108,15 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         
         // Store the key in Supabase for future use
         try {
+          // Generate a simple IV for encryption purposes
+          const iv = generateSimpleIV();
+          
           const { error } = await supabase
             .from('openai_keys')
             .upsert({ 
               google_id: googleId, 
-              key_content: key
+              key_content: key,
+              iv: iv
             });
           
           if (error) {
@@ -153,13 +157,17 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     
     console.log(`Key format valid: starts with "sk-" = true, length = ${trimmedKey.length}`);
     
+    // Generate a simple IV for encryption purposes
+    const iv = generateSimpleIV();
+    
     // Save to Supabase
     try {
       const { error } = await supabase
         .from('openai_keys')
         .upsert({ 
           google_id: googleId, 
-          key_content: trimmedKey
+          key_content: trimmedKey,
+          iv: iv
         });
       
       if (error) {
@@ -198,6 +206,18 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     // Return true to allow for local storage fallback
     return true;
   }
+}
+
+// Helper function to generate a simple IV for encryption purposes
+function generateSimpleIV(): string {
+  // Generate a random string to use as IV
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const length = 16; // Standard IV length
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
 }
 
 export const googleLoginUrl = `${API_BASE_URL}/auth/google`;
