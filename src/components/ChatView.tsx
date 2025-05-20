@@ -1,5 +1,5 @@
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+const handleSubmit = async (e?: React.FormEvent) => {
+  if (e) e.preventDefault();
   console.log("🔥 handleSubmit triggered");
 
   const isInputValid = !!input.trim();
@@ -20,6 +20,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     if (!openaiKey) {
+      console.warn("⛔ openaiKey is missing");
       toast({
         title: "API Key Required",
         description: "No OpenAI API key found. Please refresh your key or check your account settings.",
@@ -33,7 +34,9 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     console.log("📩 Submitting message with:", {
       googleId,
+      openaiKey,
       input,
+      fullUser: currentUser,
       messages: [...messages, userMessage].map(msg => ({
         role: msg.role,
         content: msg.content
@@ -47,6 +50,8 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
 
     const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
+
+    console.log("✅ Response from backend:", response);
 
     const assistantMessage: Message = {
       id: Date.now().toString(),
