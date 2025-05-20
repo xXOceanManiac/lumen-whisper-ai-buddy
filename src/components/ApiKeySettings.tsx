@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { saveOpenAIKey } from "@/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,8 +54,42 @@ const ApiKeySettings = () => {
     setIsSubmitting(true);
     
     try {
+      // Trim key and validate format
+      const trimmedKey = newApiKey.trim();
+      if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+        toast({
+          title: "Invalid API Key",
+          description: "API key should start with sk- and be at least 30 characters long",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       console.log("Saving new OpenAI API key for googleId:", user.googleId);
-      const success = await saveOpenAIKey(user.googleId, newApiKey);
+      console.log("Key format:", trimmedKey.substring(0, 5) + "..." + trimmedKey.slice(-4), "length:", trimmedKey.length);
+      
+      // First attempt to save in Supabase directly
+      try {
+        const { error } = await supabase
+          .from('openai_keys')
+          .upsert({ 
+            google_id: user.googleId, 
+            key_content: trimmedKey,
+            iv: 'placeholder' // This would be replaced with actual encryption in production
+          });
+        
+        if (error) {
+          console.error(`❌ Failed to save key to Supabase: ${error.message}`);
+        } else {
+          console.log(`✅ Successfully saved key to Supabase`);
+        }
+      } catch (error) {
+        console.error(`❌ Error saving key to Supabase:`, error);
+      }
+      
+      // Also save via backend API
+      const success = await saveOpenAIKey(user.googleId, trimmedKey);
       
       if (success) {
         toast({
@@ -63,7 +98,7 @@ const ApiKeySettings = () => {
         });
         
         // Update the key in local state immediately for better UX
-        setOpenaiKey(newApiKey);
+        setOpenaiKey(trimmedKey);
         console.log("✅ API key updated in local state after saving");
         
         // Try to refresh the API key from the server

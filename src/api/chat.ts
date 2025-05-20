@@ -10,6 +10,19 @@ export const callChatApi = async (
   onChunk?: (chunk: string) => void
 ): Promise<{ content: string; calendarEvent?: any }> => {
   try {
+    // Trim and validate API key
+    const trimmedApiKey = apiKey ? apiKey.trim() : '';
+    
+    if (!trimmedApiKey) {
+      console.error("❌ Missing or empty API key in callChatApi");
+      throw new Error("A valid OpenAI API key is required");
+    }
+    
+    if (!trimmedApiKey.startsWith('sk-') || trimmedApiKey.length < 30) {
+      console.error("❌ Invalid API key format:", trimmedApiKey.substring(0, 5) + "...");
+      throw new Error("Invalid API key format. OpenAI keys should start with 'sk-'");
+    }
+    
     // Format messages for the API
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
@@ -25,6 +38,9 @@ export const callChatApi = async (
     // Log the detailed request payload
     console.log("📩 Sending to /api/chat:", {
       googleId,
+      apiKeyPrefix: trimmedApiKey.substring(0, 5) + "...",
+      apiKeySuffix: "..." + trimmedApiKey.slice(-4),
+      apiKeyLength: trimmedApiKey.length,
       messageCount: formattedMessages.length,
       firstMessage: formattedMessages[0]?.content.substring(0, 50) + "...",
       lastMessage: formattedMessages[formattedMessages.length - 1]?.content.substring(0, 50) + "..."
@@ -34,7 +50,7 @@ export const callChatApi = async (
     const payload = {
       googleId,
       messages: formattedMessages,
-      apiKey,
+      apiKey: trimmedApiKey,
     };
 
     console.log(`🔄 API request to ${API_BASE_URL}/api/chat initiated`);
@@ -48,6 +64,8 @@ export const callChatApi = async (
       credentials: 'include', // Required for session cookies
     });
 
+    console.log(`📡 Chat API response status: ${response.status}`);
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ API Error (${response.status}):`, errorText);

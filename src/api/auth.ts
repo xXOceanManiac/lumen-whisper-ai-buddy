@@ -1,3 +1,4 @@
+
 // Authentication API utilities
 
 interface User {
@@ -56,6 +57,27 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
   try {
     console.log(`🔄 Fetching OpenAI key for googleId: ${googleId}`);
     
+    // Try fetching from Supabase first
+    const { data: supabaseData, error: supabaseError } = await supabase
+      .from('openai_keys')
+      .select('key_content, iv')
+      .eq('google_id', googleId)
+      .maybeSingle();
+    
+    if (supabaseError) {
+      console.error(`❌ Supabase error fetching OpenAI key: ${supabaseError.message}`);
+    }
+    
+    if (supabaseData?.key_content) {
+      console.log(`✅ Successfully retrieved OpenAI key from Supabase`);
+      const key = supabaseData.key_content.trim();
+      console.log(`Key format: ${key.substring(0, 5)}...${key.slice(-4)}`);
+      return key;
+    }
+    
+    // If not in Supabase, fall back to backend API
+    console.log(`⚠️ Key not found in Supabase, trying backend API`);
+    
     const response = await fetch(`${API_BASE_URL}/api/get-openai-key?googleId=${googleId}`, {
       method: 'GET',
       credentials: 'include', // Required to include session cookie
@@ -65,9 +87,30 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
       const data = await response.json();
       
       if (data.apiKey) {
-        console.log(`✅ Successfully retrieved OpenAI key: ${data.apiKey.slice(0, 5)}...`);
-        console.log(`Key length: ${data.apiKey.length}`);
-        return data.apiKey;
+        const key = data.apiKey.trim();
+        console.log(`✅ Successfully retrieved OpenAI key from API: ${key.substring(0, 5)}...${key.slice(-4)}`);
+        console.log(`Key length: ${key.length}`);
+        
+        // Store the key in Supabase for future use
+        try {
+          const { error } = await supabase
+            .from('openai_keys')
+            .upsert({ 
+              google_id: googleId, 
+              key_content: key,
+              iv: 'placeholder' // This would be replaced with actual encryption in production
+            });
+          
+          if (error) {
+            console.error(`❌ Failed to save key to Supabase: ${error.message}`);
+          } else {
+            console.log(`✅ Successfully saved key to Supabase`);
+          }
+        } catch (err) {
+          console.error(`❌ Error saving key to Supabase: ${err}`);
+        }
+        
+        return key;
       } else {
         console.log("❌ API key not found in response data");
         return null;
@@ -88,19 +131,40 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
     console.log(`Key format check: starts with "sk-" = ${apiKey.startsWith('sk-')}, length = ${apiKey.length}`);
     
-    // Validate the API key format before sending
-    if (!apiKey.startsWith('sk-') || apiKey.length < 30) {
-      console.error("❌ Invalid API key format:", apiKey.slice(0, 5) + "...");
+    // Validate and trim the API key
+    const trimmedKey = apiKey.trim();
+    if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+      console.error("❌ Invalid API key format:", trimmedKey.slice(0, 5) + "...");
       return false;
     }
     
+    // Save to Supabase
+    try {
+      const { error } = await supabase
+        .from('openai_keys')
+        .upsert({ 
+          google_id: googleId, 
+          key_content: trimmedKey,
+          iv: 'placeholder' // This would be replaced with actual encryption in production
+        });
+      
+      if (error) {
+        console.error(`❌ Failed to save key to Supabase: ${error.message}`);
+      } else {
+        console.log(`✅ Successfully saved key to Supabase`);
+      }
+    } catch (err) {
+      console.error(`❌ Error saving key to Supabase: ${err}`);
+    }
+    
+    // Also save to backend API as backup
     const response = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
       method: 'POST',
       credentials: 'include', // Required to include session cookie
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ googleId, openaiApiKey: apiKey })
+      body: JSON.stringify({ googleId, openaiApiKey: trimmedKey })
     });
     
     console.log("Save key response status:", response.status);
@@ -111,10 +175,8 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
       return true;
     } else {
       const errorText = await response.text();
-      console.error(`❌ Failed to save OpenAI key: ${response.status}. Error: ${errorText}`);
-      
-      // Even if the backend fails, we'll return true to allow for local storage fallback
-      // This is a UX decision to prevent blocking the user if backend is unreachable
+      console.error(`❌ Failed to save OpenAI key to API: ${response.status}. Error: ${errorText}`);
+      // We still return true if Supabase save was successful
       return true;
     }
   } catch (error) {

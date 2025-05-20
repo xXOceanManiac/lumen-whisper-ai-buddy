@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -17,7 +18,7 @@ interface User {
 }
 
 interface ChatViewProps {
-  user?: User; // Making the user prop optional
+  user?: User;
 }
 
 const ChatView = ({ user }: ChatViewProps = {}) => {
@@ -30,7 +31,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Use the AuthContext to get authentication data - fix the duplicate declaration
+  // Use the AuthContext to get authentication data
   const { user: authUser, openaiKey, refreshOpenAIKey } = useAuth();
   
   // Ensure we're using the user from props or from auth context
@@ -51,7 +52,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   // Log when OpenAI API key changes
   useEffect(() => {
     if (openaiKey) {
-      console.log("✅ OpenAI key available in ChatView:", openaiKey.slice(0, 5) + "...");
+      console.log("✅ OpenAI key available in ChatView:", openaiKey.substring(0, 5) + "..." + openaiKey.slice(-4));
     } else {
       console.log("❌ No OpenAI key available in ChatView");
     }
@@ -73,7 +74,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       const success = await refreshOpenAIKey();
       if (success) {
         console.log("✅ OpenAI key refreshed successfully");
-        console.log("🔑 Current openaiKey after refresh:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
+        console.log("🔑 Current openaiKey after refresh:", openaiKey ? openaiKey.substring(0, 5) + "..." + openaiKey.slice(-4) : "null");
         toast({
           title: "API Key Refreshed",
           description: "Your OpenAI API key has been successfully refreshed.",
@@ -95,7 +96,6 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     e.preventDefault();
     
     console.log("🔥 handleSubmit triggered");
-    console.log("🔑 openaiKey present at submit:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
     
     if (!input.trim() || isProcessing) {
       console.log("❌ Empty input or already processing, cancelling submission");
@@ -120,10 +120,19 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         console.error("❌ No OpenAI API key found");
         toast({
           title: "API Key Required",
-          description: "No OpenAI API key found. Please refresh your key or check your account settings.",
+          description: "No OpenAI API key found. Please add your API key in settings.",
           variant: "destructive",
         });
         setIsProcessing(false);
+        
+        // Add error message to chat
+        const errorMessage: Message = {
+          id: "error-" + Date.now().toString(),
+          role: "assistant",
+          content: "Could not retrieve or use your OpenAI key. Please try reconnecting your key in settings.",
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, errorMessage]);
         return;
       }
       
@@ -138,6 +147,15 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           variant: "destructive",
         });
         setIsProcessing(false);
+        
+        // Add error message to chat
+        const errorMessage: Message = {
+          id: "error-" + Date.now().toString(),
+          role: "assistant",
+          content: "Authentication error. Please try logging out and back in.",
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, errorMessage]);
         return;
       }
       
@@ -145,7 +163,9 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       console.log("📩 Submitting message with:", {
         googleId,
         input,
-        openaiKeyPrefix: openaiKey.slice(0, 5) + "...",
+        openaiKeyPrefix: openaiKey.substring(0, 5) + "...",
+        openaiKeySuffix: "..." + openaiKey.slice(-4),
+        openaiKeyLength: openaiKey.length,
         messages: [...messages, userMessage].map(msg => ({
           role: msg.role,
           content: msg.content.substring(0, 50) + (msg.content.length > 50 ? "..." : "")
@@ -174,9 +194,20 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       }
     } catch (error) {
       console.error("❌ Error sending message:", error);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: "error-" + Date.now().toString(),
+        role: "assistant",
+        content: "Could not retrieve or use your OpenAI key. Please try reconnecting your key in settings.",
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Something went wrong. Please check your API key and try again.",
         variant: "destructive",
       });
     } finally {
