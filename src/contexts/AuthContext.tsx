@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { checkAuth, getOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -76,8 +75,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Set OpenAI key with storage
   const handleSetOpenaiKey = (key: string) => {
-    if (!key || !key.startsWith('sk-')) {
-      console.error("Invalid OpenAI API key format:", key ? key.substring(0, 5) + "..." : "null/empty");
+    const trimmedKey = key ? key.trim() : '';
+    
+    if (!trimmedKey || !trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+      console.error("Invalid OpenAI API key format:", trimmedKey ? trimmedKey.substring(0, 5) + "..." : "null/empty");
       toast({
         title: "Invalid API Key",
         description: "API key should start with sk- and be at least 30 characters",
@@ -86,10 +87,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    console.log("✅ Setting OpenAI API key:", key.substring(0, 5) + "...");
+    console.log(`✅ Setting OpenAI API key: ${trimmedKey.substring(0, 5)}... (${trimmedKey.length} chars)`);
     // Store the FULL unmodified key
-    setOpenaiKey(key);
-    saveOpenAIKeyToStorage(key);
+    setOpenaiKey(trimmedKey);
+    saveOpenAIKeyToStorage(trimmedKey);
     setHasCompletedOnboarding(true);
   };
 
@@ -99,8 +100,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Fetching OpenAI API key for googleId:", userId);
       const apiKey = await getOpenAIKey(userId);
       
-      if (apiKey && apiKey.startsWith('sk-')) {
-        console.log("✅ OpenAI key fetched:", apiKey.substring(0, 5) + "...", "length:", apiKey.length);
+      if (apiKey && apiKey.startsWith('sk-') && apiKey.length >= 30) {
+        console.log(`✅ OpenAI key fetched: ${apiKey.substring(0, 5)}... (${apiKey.length} chars)`);
         setOpenaiKey(apiKey);
         saveOpenAIKeyToStorage(apiKey);
         setHasCompletedOnboarding(true);

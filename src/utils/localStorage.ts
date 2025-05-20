@@ -1,4 +1,3 @@
-
 import { Settings, ChatHistory } from '../types';
 
 const SETTINGS_KEY = 'lumen-settings';
@@ -27,26 +26,30 @@ export const getSettings = (): Settings => {
 
 // OpenAI API key storage (separate from settings for better security)
 export const saveOpenAIKey = (key: string): void => {
-  if (!key || !key.startsWith('sk-')) {
-    console.error("Invalid OpenAI API key format. Key must start with 'sk-'");
+  // Properly validate the key format
+  const trimmedKey = key.trim();
+  if (!trimmedKey || !trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+    console.error("Invalid OpenAI API key format. Key must start with 'sk-' and be at least 30 characters");
     return;
   }
+  
   // Store the full, unmodified key
-  localStorage.setItem(OPENAI_KEY_STORAGE_KEY, key);
-  console.log(`Saved full OpenAI API key to localStorage (${key.length} chars, starts with ${key.substring(0, 5)})`);
+  localStorage.setItem(OPENAI_KEY_STORAGE_KEY, trimmedKey);
+  console.log(`Saved full OpenAI API key to localStorage (${trimmedKey.length} chars, starts with ${trimmedKey.substring(0, 5)})`);
 };
 
 export const getOpenAIKey = (): string | null => {
   const key = localStorage.getItem(OPENAI_KEY_STORAGE_KEY);
   if (key) {
     // Validate key format
-    if (!key.startsWith('sk-')) {
+    if (!key.startsWith('sk-') || key.length < 30) {
       console.error("Retrieved invalid OpenAI API key format from localStorage");
       return null;
     }
     console.log(`Retrieved full OpenAI API key from localStorage (${key.length} chars, starts with ${key.substring(0, 5)})`);
+    return key;
   }
-  return key;
+  return null;
 };
 
 // Chat history management

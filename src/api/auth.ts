@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
 
@@ -73,7 +72,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
       const key = supabaseData.key_content.trim();
       
       // Validate key format
-      if (!key.startsWith('sk-')) {
+      if (!key.startsWith('sk-') || key.length < 30) {
         console.error(`❌ Invalid API key format retrieved from Supabase: ${key.substring(0, 5)}...`);
         return null;
       }
@@ -98,7 +97,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         const key = data.apiKey.trim();
         
         // Validate key format
-        if (!key.startsWith('sk-')) {
+        if (!key.startsWith('sk-') || key.length < 30) {
           console.error(`❌ Invalid API key format retrieved from API: ${key.substring(0, 5)}...`);
           return null;
         }

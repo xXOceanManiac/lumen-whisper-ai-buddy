@@ -18,7 +18,13 @@ export const callOpenAIChat = async (
 
   try {
     console.log("🔄 Preparing OpenAI API call with", messages.length, "messages");
-    console.log("🔑 Using OpenAI API key:", trimmedApiKey.substring(0, 5) + "..." + trimmedApiKey.slice(-4), "length:", trimmedApiKey.length);
+    
+    // Log a safe version of the key (first 5 chars and last 4)
+    if (trimmedApiKey) {
+      console.log("🔑 Using OpenAI API key:", 
+        trimmedApiKey.substring(0, 5) + "..." + trimmedApiKey.slice(-4), 
+        "length:", trimmedApiKey.length);
+    }
     
     // Validate API key format
     if (!trimmedApiKey.startsWith('sk-') || trimmedApiKey.length < 30) {

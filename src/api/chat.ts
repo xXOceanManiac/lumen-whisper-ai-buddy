@@ -19,7 +19,7 @@ export const callChatApi = async (
     }
     
     if (!trimmedApiKey.startsWith('sk-') || trimmedApiKey.length < 30) {
-      console.error("❌ Invalid API key format:", trimmedApiKey.substring(0, 5) + "...");
+      console.error("❌ Invalid API key format:", trimmedApiKey.substring(0, 5) + "...", "length:", trimmedApiKey.length);
       throw new Error("Invalid API key format. OpenAI keys should start with 'sk-'");
     }
     
