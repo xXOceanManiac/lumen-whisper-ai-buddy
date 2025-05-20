@@ -1,5 +1,5 @@
-
 // Authentication API utilities
+import { supabase } from "@/integrations/supabase/client";
 
 interface User {
   googleId: string;
