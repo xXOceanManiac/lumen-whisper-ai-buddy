@@ -97,6 +97,17 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       // Get the user's googleId
       const googleId = currentUser?.googleId;
       console.log("Current user for API call:", currentUser);
+      console.log("Sending to /api/chat:", {
+        googleId: googleId,
+        messages: [...messages, userMessage].map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      });
+      
+      if (!googleId) {
+        console.warn("No googleId available for chat API call");
+      }
       
       // Call backend Chat API with googleId
       const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
