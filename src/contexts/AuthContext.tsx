@@ -38,6 +38,9 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+// Local Storage key for user data
+const USER_STORAGE_KEY = 'lumen-user-data';
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -48,9 +51,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const { toast } = useToast();
 
+  // Save user data to localStorage
+  const saveUserToStorage = (userData: User) => {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+    console.log("User data saved to localStorage with googleId:", userData.googleId);
+  };
+
+  // Load user data from localStorage
+  const loadUserFromStorage = (): User | null => {
+    const userData = localStorage.getItem(USER_STORAGE_KEY);
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData) as User;
+        console.log("User data loaded from localStorage with googleId:", parsedUser.googleId);
+        return parsedUser;
+      } catch (e) {
+        console.error("Error parsing user data from localStorage:", e);
+        return null;
+      }
+    }
+    return null;
+  };
+
   // Function to fetch OpenAI API key
   const fetchOpenAIKey = async (userId: string): Promise<boolean> => {
     try {
+      console.log("Fetching OpenAI API key for googleId:", userId);
       const apiKey = await getOpenAIKey(userId);
       setOpenaiKey(apiKey);
       setHasCompletedOnboarding(apiKey !== null);
@@ -66,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user?.googleId) return false;
     
     try {
+      console.log("Refreshing OpenAI API key for googleId:", user.googleId);
       const success = await fetchOpenAIKey(user.googleId);
       
       if (success) {
@@ -100,6 +127,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const urlParams = new URLSearchParams(window.location.search);
         const googleSuccess = urlParams.get('google') === 'success';
         
+        // Check if we have a saved user in localStorage
+        const savedUser = loadUserFromStorage();
+        
         // If we just got redirected from successful Google login, clean up URL parameter
         if (googleSuccess) {
           // Clean up URL without refreshing the page
@@ -108,32 +138,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // Check authentication status
-        const { authenticated, user, errorType } = await checkAuth();
+        const { authenticated, user: serverUser, errorType } = await checkAuth();
         
         setIsAuthenticated(authenticated);
         setLastAuthCheck(Date.now());
         
-        if (authenticated && user) {
-          setUser(user);
+        if (authenticated && serverUser) {
+          // Use server user data or existing data from localStorage if available
+          const finalUser = serverUser;
+          setUser(finalUser);
           setError(null);
-          console.log("Authentication verified: user is authenticated");
+          console.log("Authentication verified: user is authenticated with googleId:", finalUser.googleId);
+          
+          // Save user data to localStorage for persistence
+          saveUserToStorage(finalUser);
           
           // Show success toast if we just completed Google authentication
           if (googleSuccess) {
             toast({
               title: "Authentication Successful",
-              description: `Welcome, ${user.name || 'User'}!`,
+              description: `Welcome, ${finalUser.name || 'User'}!`,
             });
           }
           
           // Fetch OpenAI API key
-          await fetchOpenAIKey(user.googleId);
+          await fetchOpenAIKey(finalUser.googleId);
+        } else if (savedUser && !googleSuccess) {
+          // If we have a saved user but server authentication failed, and we're not in the middle
+          // of a new authentication attempt, try to use the saved user data
+          console.log("Using saved user data from localStorage with googleId:", savedUser.googleId);
+          setUser(savedUser);
+          setIsAuthenticated(true);
+          
+          // Try to fetch API key using the saved user ID
+          await fetchOpenAIKey(savedUser.googleId);
         } else {
           setUser(null);
           setOpenaiKey(null);
           // Use the specific error type
           setError(errorType || "AUTH_FAILED");
           console.log(`Authentication failed: ${errorType || "AUTH_FAILED"}`);
+          
+          // Clear local storage on authentication failure
+          localStorage.removeItem(USER_STORAGE_KEY);
           
           // Show error toast if Google authentication failed
           if (googleSuccess) {

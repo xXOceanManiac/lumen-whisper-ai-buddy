@@ -16,6 +16,9 @@ export const callChatApi = async (
       content: msg.content
     }));
 
+    // Log the googleId value before creating the payload
+    console.log("Chat API using googleId:", googleId);
+    
     // Create the payload according to the required format
     const payload = {
       googleId: googleId || "test-id-123", // Use provided googleId or fallback to test ID

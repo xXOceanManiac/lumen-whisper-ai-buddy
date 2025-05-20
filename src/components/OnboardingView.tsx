@@ -38,6 +38,8 @@ const OnboardingView = () => {
     setIsSubmitting(true);
     
     try {
+      // Log the googleId before saving the API key
+      console.log("Saving API key for googleId:", user.googleId);
       const success = await saveOpenAIKey(user.googleId, apiKey.trim());
       
       if (success) {
