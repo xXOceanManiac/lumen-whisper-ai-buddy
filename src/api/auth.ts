@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 
 interface User {
@@ -84,6 +83,8 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
 
 export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<boolean> {
   try {
+    console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
+    
     const response = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
       method: 'POST',
       credentials: 'include', // Required to include session cookie
@@ -93,9 +94,15 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
       body: JSON.stringify({ googleId, openaiApiKey: apiKey })
     });
     
-    return response.ok;
+    if (response.ok) {
+      console.log("✅ Successfully saved OpenAI key");
+      return true;
+    } else {
+      console.error(`❌ Failed to save OpenAI key: ${response.status}`);
+      return false;
+    }
   } catch (error) {
-    console.error("Failed to save OpenAI API key:", error);
+    console.error("❌ Error saving OpenAI API key:", error);
     return false;
   }
 }

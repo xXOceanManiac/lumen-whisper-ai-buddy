@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -7,6 +8,7 @@ import ChatMessage from "./ChatMessage";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import ApiKeySettings from "./ApiKeySettings";
 
 interface User {
   googleId: string;
@@ -209,6 +211,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <ApiKeySettings />
           <button
             onClick={handleRefreshApiKey}
             disabled={isRefreshingKey}
