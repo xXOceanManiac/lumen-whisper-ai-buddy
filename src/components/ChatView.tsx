@@ -174,23 +174,33 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       
       // Call backend Chat API with googleId
       console.log("🔄 Calling chat API...");
-      const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
-      console.log("✅ Chat API response received");
-      
-      // Create assistant message from response
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: response.content,
-        timestamp: Date.now()
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      
-      // Handle calendar event if present
-      if (response.calendarEvent) {
-        // You can add calendar event handling here in the future
-        console.log("📅 Calendar event detected:", response.calendarEvent);
+      try {
+        const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
+        console.log("✅ Chat API response received");
+        
+        if (!response || !response.content) {
+          console.error("❌ Invalid or empty response from chat API");
+          throw new Error("Invalid response from chat API");
+        }
+        
+        // Create assistant message from response
+        const assistantMessage: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: response.content,
+          timestamp: Date.now()
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Handle calendar event if present
+        if (response.calendarEvent) {
+          // You can add calendar event handling here in the future
+          console.log("📅 Calendar event detected:", response.calendarEvent);
+        }
+      } catch (error) {
+        console.error("❌ Error processing chat API response:", error);
+        throw error; // Re-throw to be caught by outer catch
       }
     } catch (error) {
       console.error("❌ Error sending message:", error);

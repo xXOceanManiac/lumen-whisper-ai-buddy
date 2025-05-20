@@ -81,7 +81,15 @@ export const callOpenAIChat = async (
 
     console.log("✅ OpenAI API response received successfully");
     const data = await response.json();
-    const content = data.choices[0]?.message?.content || '';
+    console.log("OpenAI raw response:", data);
+    
+    // Safely extract content with proper error handling
+    const content = data?.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      console.error("❌ No content found in OpenAI response", data);
+      throw new Error("Invalid response format from OpenAI API");
+    }
 
     console.log("📥 Received OpenAI response:", {
       responseLength: content.length,

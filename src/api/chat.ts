@@ -74,14 +74,22 @@ export const callChatApi = async (
 
     console.log("✅ API response received successfully");
     const data = await response.json();
+    console.log("OpenAI raw response:", data);
+    
+    // Safely extract the assistant message with proper error handling
+    const assistantMessage = data?.choices?.[0]?.message?.content;
+    
+    if (!assistantMessage) {
+      console.error("❌ No assistant message found in OpenAI response", data);
+      throw new Error("Invalid response format from OpenAI API");
+    }
     
     // Parse the response for calendar events
     let calendarEvent;
     try {
-      const content = data.choices[0].message.content;
-      if (content.includes('"type":"calendar"') || content.includes('"type": "calendar"')) {
+      if (assistantMessage.includes('"type":"calendar"') || assistantMessage.includes('"type": "calendar"')) {
         // Extract JSON object from the response
-        const match = content.match(/\{[\s\S]*?\}/);
+        const match = assistantMessage.match(/\{[\s\S]*?\}/);
         if (match) {
           const jsonStr = match[0];
           const parsedEvent = JSON.parse(jsonStr);
@@ -93,10 +101,11 @@ export const callChatApi = async (
       }
     } catch (error) {
       console.error("Error parsing calendar event:", error);
+      // Continue without calendar event if parsing fails
     }
 
     return { 
-      content: data.choices[0].message.content,
+      content: assistantMessage,
       calendarEvent 
     };
   } catch (error) {
