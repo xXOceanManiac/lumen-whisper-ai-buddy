@@ -15,6 +15,7 @@ export const callOpenAIChat = async (
 
   try {
     console.log("🔄 Preparing OpenAI API call with", messages.length, "messages");
+    console.log("🔑 Using OpenAI API key:", apiKey.slice(0, 5) + "...");
     
     // Convert our Message format to OpenAI's format
     const openAIMessages = messages.map(msg => ({
@@ -28,6 +29,7 @@ export const callOpenAIChat = async (
       messageCount: openAIMessages.length,
       apiKeyPresent: !!apiKey,
       apiKeyLength: apiKey ? apiKey.length : 0, // Log length only, not the key itself
+      apiKeyPrefix: apiKey ? apiKey.slice(0, 5) + "..." : null
     });
 
     // Call OpenAI's API with the user's API key

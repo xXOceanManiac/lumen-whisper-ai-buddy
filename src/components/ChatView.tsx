@@ -47,6 +47,15 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     ]);
   }, []);
   
+  // Log when OpenAI API key changes
+  useEffect(() => {
+    if (openaiKey) {
+      console.log("✅ OpenAI key available in ChatView:", openaiKey.slice(0, 5) + "...");
+    } else {
+      console.log("❌ No OpenAI key available in ChatView");
+    }
+  }, [openaiKey]);
+  
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,7 +68,12 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const handleRefreshApiKey = async () => {
     setIsRefreshingKey(true);
     try {
-      await refreshOpenAIKey();
+      const success = await refreshOpenAIKey();
+      if (success) {
+        console.log("✅ OpenAI key refreshed successfully");
+      } else {
+        console.log("❌ Failed to refresh OpenAI key");
+      }
     } finally {
       setIsRefreshingKey(false);
     }
@@ -69,6 +83,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     e.preventDefault();
     
     console.log("🔥 handleSubmit triggered");
+    console.log("🧪 openaiKey present at submit:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
     
     if (!input.trim() || isProcessing) {
       console.log("❌ Empty input or already processing, cancelling submission");
@@ -118,6 +133,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       console.log("📩 Submitting message with:", {
         googleId,
         input,
+        openaiKeyPrefix: openaiKey.slice(0, 5) + "...",
         messages: [...messages, userMessage].map(msg => ({
           role: msg.role,
           content: msg.content.substring(0, 50) + (msg.content.length > 50 ? "..." : "")

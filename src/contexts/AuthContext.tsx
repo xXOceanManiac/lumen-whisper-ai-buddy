@@ -40,6 +40,8 @@ export const useAuth = () => useContext(AuthContext);
 
 // Local Storage key for user data
 const USER_STORAGE_KEY = 'lumen-user-data';
+// Local Storage key for OpenAI API key
+const OPENAI_KEY_STORAGE_KEY = 'lumen-openai-key';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -73,14 +75,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   };
 
+  // Save OpenAI API key to localStorage
+  const saveOpenAIKeyToStorage = (key: string) => {
+    localStorage.setItem(OPENAI_KEY_STORAGE_KEY, key);
+    console.log("OpenAI API key saved to localStorage:", key.slice(0, 5) + "...");
+  };
+
+  // Load OpenAI API key from localStorage
+  const loadOpenAIKeyFromStorage = (): string | null => {
+    const key = localStorage.getItem(OPENAI_KEY_STORAGE_KEY);
+    if (key) {
+      console.log("OpenAI API key loaded from localStorage:", key.slice(0, 5) + "...");
+    }
+    return key;
+  };
+
+  // Set OpenAI key with storage
+  const handleSetOpenaiKey = (key: string) => {
+    console.log("✅ Setting OpenAI API key:", key.slice(0, 5) + "...");
+    setOpenaiKey(key);
+    saveOpenAIKeyToStorage(key);
+    setHasCompletedOnboarding(true);
+  };
+
   // Function to fetch OpenAI API key
   const fetchOpenAIKey = async (userId: string): Promise<boolean> => {
     try {
       console.log("Fetching OpenAI API key for googleId:", userId);
       const apiKey = await getOpenAIKey(userId);
-      setOpenaiKey(apiKey);
-      setHasCompletedOnboarding(apiKey !== null);
-      return apiKey !== null;
+      
+      if (apiKey) {
+        console.log("✅ OpenAI key fetched:", apiKey.slice(0, 5) + "...");
+        setOpenaiKey(apiKey);
+        saveOpenAIKeyToStorage(apiKey);
+        setHasCompletedOnboarding(true);
+        return true;
+      } else {
+        console.log("❌ No OpenAI key found for user");
+        return false;
+      }
     } catch (error) {
       console.error("Error fetching OpenAI API key:", error);
       return false;
@@ -129,6 +162,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // Check if we have a saved user in localStorage
         const savedUser = loadUserFromStorage();
+        // Load saved API key from localStorage
+        const savedApiKey = loadOpenAIKeyFromStorage();
         
         // If we just got redirected from successful Google login, clean up URL parameter
         if (googleSuccess) {
@@ -161,7 +196,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
           
-          // Fetch OpenAI API key
+          // If we have a saved API key, restore it immediately for better UX
+          if (savedApiKey) {
+            setOpenaiKey(savedApiKey);
+            setHasCompletedOnboarding(true);
+            console.log("Restored OpenAI API key from localStorage:", savedApiKey.slice(0, 5) + "...");
+          }
+          
+          // Fetch fresh OpenAI API key
           await fetchOpenAIKey(finalUser.googleId);
         } else if (savedUser && !googleSuccess) {
           // If we have a saved user but server authentication failed, and we're not in the middle
@@ -169,6 +211,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log("Using saved user data from localStorage with googleId:", savedUser.googleId);
           setUser(savedUser);
           setIsAuthenticated(true);
+          
+          // If we have a saved API key, restore it immediately
+          if (savedApiKey) {
+            setOpenaiKey(savedApiKey);
+            setHasCompletedOnboarding(true);
+            console.log("Restored OpenAI API key from localStorage:", savedApiKey.slice(0, 5) + "...");
+          }
           
           // Try to fetch API key using the saved user ID
           await fetchOpenAIKey(savedUser.googleId);
@@ -181,6 +230,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Clear local storage on authentication failure
           localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(OPENAI_KEY_STORAGE_KEY);
           
           // Show error toast if Google authentication failed
           if (googleSuccess) {
@@ -221,7 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         error, 
         lastAuthCheck,
         hasCompletedOnboarding,
-        setOpenaiKey,
+        setOpenaiKey: handleSetOpenaiKey,
         setHasCompletedOnboarding,
         refreshOpenAIKey
       }}
