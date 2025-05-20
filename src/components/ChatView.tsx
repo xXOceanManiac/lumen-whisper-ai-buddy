@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -33,7 +32,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const { openaiKey, refreshOpenAIKey } = useAuth();
   
   // Ensure we're using the user from props or from auth context
-  const { user: authUser } = useAuth();
+  const { user: authUser, openaiKey } = useAuth();
   const currentUser = user || authUser;
 
   // Add initial greeting message
@@ -74,8 +73,17 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       if (success) {
         console.log("✅ OpenAI key refreshed successfully");
         console.log("🔑 Current openaiKey after refresh:", openaiKey ? openaiKey.slice(0, 5) + "..." : "null");
+        toast({
+          title: "API Key Refreshed",
+          description: "Your OpenAI API key has been successfully refreshed.",
+        });
       } else {
         console.log("❌ Failed to refresh OpenAI key");
+        toast({
+          title: "Refresh Failed",
+          description: "Could not refresh your API key. Please check your account settings.",
+          variant: "destructive",
+        });
       }
     } finally {
       setIsRefreshingKey(false);
@@ -141,13 +149,6 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           role: msg.role,
           content: msg.content.substring(0, 50) + (msg.content.length > 50 ? "..." : "")
         }))
-      });
-      
-      // Log the user object for debugging
-      console.log("👤 Current user:", {
-        googleId: currentUser?.googleId,
-        name: currentUser?.name,
-        email: currentUser?.email?.substring(0, 3) + "***" // Partial email for privacy
       });
       
       // Call backend Chat API with googleId

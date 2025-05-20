@@ -1,3 +1,4 @@
+
 // Authentication API utilities
 
 interface User {
@@ -66,6 +67,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
       
       if (data.apiKey) {
         console.log(`✅ Successfully retrieved OpenAI key: ${data.apiKey.slice(0, 5)}...`);
+        console.log(`Key length: ${data.apiKey.length}`);
         return data.apiKey;
       } else {
         console.log("❌ API key not found in response data");
@@ -84,6 +86,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
 export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<boolean> {
   try {
     console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
+    console.log(`Key format check: starts with "sk-" = ${apiKey.startsWith('sk-')}, length = ${apiKey.length}`);
     
     const response = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
       method: 'POST',
@@ -94,11 +97,15 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
       body: JSON.stringify({ googleId, openaiApiKey: apiKey })
     });
     
+    console.log("Save key response status:", response.status);
+    
     if (response.ok) {
-      console.log("✅ Successfully saved OpenAI key");
+      const responseData = await response.json();
+      console.log("✅ Successfully saved OpenAI key. Server response:", responseData);
       return true;
     } else {
-      console.error(`❌ Failed to save OpenAI key: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Failed to save OpenAI key: ${response.status}. Error: ${errorText}`);
       return false;
     }
   } catch (error) {

@@ -15,7 +15,16 @@ export const callOpenAIChat = async (
 
   try {
     console.log("🔄 Preparing OpenAI API call with", messages.length, "messages");
-    console.log("🔑 Using OpenAI API key:", apiKey.slice(0, 5) + "...");
+    console.log("🔑 Using OpenAI API key:", apiKey.slice(0, 5) + "...", "length:", apiKey.length);
+    
+    // Validate API key format
+    if (!apiKey.startsWith('sk-') || apiKey.length < 30) {
+      console.error("❌ Invalid API key format:", apiKey.slice(0, 5) + "...");
+      return {
+        success: false,
+        error: 'Invalid API key format. OpenAI keys should start with "sk-" and be at least 30 characters long.'
+      };
+    }
     
     // Convert our Message format to OpenAI's format
     const openAIMessages = messages.map(msg => ({
@@ -28,7 +37,7 @@ export const callOpenAIChat = async (
       model: 'gpt-4o-mini',
       messageCount: openAIMessages.length,
       apiKeyPresent: !!apiKey,
-      apiKeyLength: apiKey ? apiKey.length : 0, // Log length only, not the key itself
+      apiKeyLength: apiKey ? apiKey.length : 0,
       apiKeyPrefix: apiKey ? apiKey.slice(0, 5) + "..." : null
     });
 
