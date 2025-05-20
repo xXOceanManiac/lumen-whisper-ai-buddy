@@ -94,8 +94,12 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         return;
       }
       
-      // Call backend Chat API instead of OpenAI directly
-      const response = await callChatApi([...messages, userMessage], openaiKey);
+      // Get the user's googleId
+      const googleId = currentUser?.googleId;
+      console.log("Current user for API call:", currentUser);
+      
+      // Call backend Chat API with googleId
+      const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
       
       // Create assistant message from response
       const assistantMessage: Message = {

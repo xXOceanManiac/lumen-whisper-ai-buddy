@@ -6,6 +6,7 @@ const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 export const callChatApi = async (
   messages: Message[],
   apiKey: string,
+  googleId?: string,
   onChunk?: (chunk: string) => void
 ): Promise<{ content: string; calendarEvent?: any }> => {
   try {
@@ -15,15 +16,21 @@ export const callChatApi = async (
       content: msg.content
     }));
 
+    // Create the payload according to the required format
+    const payload = {
+      googleId: googleId || "test-id-123", // Use provided googleId or fallback to test ID
+      messages: formattedMessages,
+      apiKey,
+    };
+    
+    console.log("Sending payload to /api/chat:", payload);
+
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messages: formattedMessages,
-        apiKey,
-      }),
+      body: JSON.stringify(payload),
       credentials: 'include', // Required for session cookies
     });
 
