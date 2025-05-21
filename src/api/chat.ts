@@ -94,10 +94,25 @@ export const callChatApi = async (
           const { done, value } = await reader.read();
           if (done) break;
           
-          // Decode the chunk and send to callback
-          const chunk = decoder.decode(value, { stream: true });
-          completeContent += chunk;
-          onChunk(chunk);
+          // Decode the chunk
+          const chunkText = decoder.decode(value, { stream: true });
+          
+          // Process each line in the chunk
+          const lines = chunkText.split("\n");
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              // Extract the actual content after 'data:'
+              const content = line.substring(5).trim();
+              if (content === '[DONE]') {
+                console.log("Stream completed with [DONE] marker");
+              } else {
+                // Send the clean content (without the 'data:' prefix) to the callback
+                completeContent += content;
+                onChunk(content);
+              }
+            }
+            // We can ignore 'event: done' lines as we already check for '[DONE]'
+          }
         }
         
         // Parse the complete content for calendar events
