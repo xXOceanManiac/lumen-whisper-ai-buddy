@@ -80,14 +80,14 @@ export const callChatApi = async (
 
     console.log("✅ API response received successfully");
     const data = await response.json();
-    console.log("OpenAI raw response:", data);
+    console.log("Chat API response:", data);
     
-    // Safely extract the assistant message with proper error handling
-    const assistantMessage = data?.choices?.[0]?.message?.content;
+    // Updated: Extract the assistant message directly from data.content
+    const assistantMessage = data?.content;
     
     if (!assistantMessage) {
-      console.error("❌ No assistant message found in OpenAI response", data);
-      throw new Error("Invalid response format from OpenAI API");
+      console.error("❌ No assistant message found in API response", data);
+      throw new Error("Invalid response format from chat API");
     }
     
     // Parse the response for calendar events
