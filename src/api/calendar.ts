@@ -1,6 +1,5 @@
 
 import { CalendarEvent } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
@@ -66,6 +65,42 @@ export const createCalendarEvent = async (
   } catch (error) {
     console.error("❌ Error creating calendar event:", error);
     throw error;
+  }
+};
+
+// New functions to handle Google Calendar authentication
+export const connectGoogleCalendar = () => {
+  // Generate a random state value for CSRF protection
+  const state = Math.random().toString(36).substring(2, 15);
+  
+  // Store state in localStorage for validation on callback
+  localStorage.setItem('googleOAuthState', state);
+  
+  // Redirect to the backend's OAuth endpoint
+  const redirectUrl = `${API_BASE_URL}/api/calendar/connect?state=${state}`;
+  window.location.href = redirectUrl;
+};
+
+export const checkGoogleCalendarAuth = async (apiKey: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/calendar/check-auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ apiKey }),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const { authenticated } = await response.json();
+    return !!authenticated;
+  } catch (error) {
+    console.error("❌ Error checking calendar auth:", error);
+    return false;
   }
 };
 

@@ -17,8 +17,8 @@ const ChatBubble = ({ message }: ChatBubbleProps) => {
   };
 
   // Format date for calendar display
-  const formatEventTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatEventTime = (dateTimeObj: { dateTime: string; timeZone?: string }) => {
+    const date = new Date(dateTimeObj.dateTime);
     return date.toLocaleString([], { 
       month: 'short', 
       day: 'numeric', 
@@ -38,7 +38,7 @@ const ChatBubble = ({ message }: ChatBubbleProps) => {
             <span>Calendar Event Added</span>
           </div>
           <div className="mt-1 text-sm">
-            <div><strong>{message.calendarEvent.title}</strong></div>
+            <div><strong>{message.calendarEvent.summary || message.calendarEvent.title}</strong></div>
             <div className="text-xs mt-1 text-gray-500">
               {formatEventTime(message.calendarEvent.start)} - {formatEventTime(message.calendarEvent.end)}
             </div>

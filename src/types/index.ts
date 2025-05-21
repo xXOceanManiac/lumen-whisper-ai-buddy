@@ -18,11 +18,15 @@ export interface Settings {
   voiceId: string;
   speechRate: number;
   googleCalendarConnected: boolean;
+  elevenlabsApiKey?: string;
+  useElevenlabs?: boolean;
+  useWhisper?: boolean;
 }
 
 export interface CalendarEvent {
   id: string;
   summary: string;
+  title?: string; // Added for compatibility with ChatBubble component
   description?: string;
   start: {
     dateTime: string;
@@ -43,4 +47,7 @@ export const defaultSettings: Settings = {
   voiceId: "en-US-Standard-B",
   speechRate: 1,
   googleCalendarConnected: false,
+  elevenlabsApiKey: "",
+  useElevenlabs: false,
+  useWhisper: false,
 };

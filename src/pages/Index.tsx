@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { CalendarEvent, Message, Settings } from "@/types";
 import { getSettings, saveSettings, getChatHistory, saveChatHistory, defaultSettings } from "@/utils/localStorage";
@@ -18,6 +17,7 @@ import VoiceActivationIndicator from "@/components/VoiceActivationIndicator";
 import CalendarEventsList from "@/components/CalendarEventsList";
 import { Calendar, Mic, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CalendarPlugin from '@/components/CalendarPlugin';
 
 const Index = () => {
   // State
@@ -449,43 +449,54 @@ const Index = () => {
       if (response.calendarEvent) {
         // Only try to create the event if Google Calendar is connected
         if (settings.googleCalendarConnected) {
-          const eventCreated = await createCalendarEvent(
-            response.calendarEvent,
-            settings.openaiApiKey
-          );
-          
-          if (eventCreated) {
-            assistantMessage.calendarEvent = response.calendarEvent;
-            toast({
-              title: "Event Created",
-              description: `Added "${response.calendarEvent.title}" to your calendar.`,
-              duration: 3000,
-            });
-            refreshEvents();
-          } else {
-            // Handle calendar event creation failure with reconnection prompt
-            toast({
-              title: "Failed to Create Event",
-              description: "There may be an authentication issue. Please reconnect Google Calendar.",
-              action: (
-                <button
-                  onClick={connectGoogleCalendar}
-                  className="bg-primary text-white px-3 py-1 rounded-md text-xs"
-                >
-                  Reconnect
-                </button>
-              ),
-              variant: "destructive",
-              duration: 5000,
-            });
+          try {
+            if (!user?.googleId) {
+              throw new Error("User ID not available");
+            }
             
-            // Update settings to reflect disconnected state
-            const updatedSettings = {
-              ...settings,
-              googleCalendarConnected: false
-            };
-            setSettings(updatedSettings);
-            saveSettings(updatedSettings);
+            const eventCreated = await createCalendarEvent(
+              user.googleId,
+              response.calendarEvent.summary || response.calendarEvent.title || "Event",
+              response.calendarEvent.description || "",
+              response.calendarEvent.start?.dateTime || response.calendarEvent.start?.toString() || new Date().toISOString(),
+              response.calendarEvent.end?.dateTime || response.calendarEvent.end?.toString() || new Date().toISOString()
+            );
+            
+            if (eventCreated) {
+              assistantMessage.calendarEvent = response.calendarEvent;
+              toast({
+                title: "Event Created",
+                description: `Added "${response.calendarEvent.title}" to your calendar.`,
+                duration: 3000,
+              });
+              refreshEvents();
+            } else {
+              // Handle calendar event creation failure with reconnection prompt
+              toast({
+                title: "Failed to Create Event",
+                description: "There may be an authentication issue. Please reconnect Google Calendar.",
+                action: (
+                  <button
+                    onClick={connectGoogleCalendar}
+                    className="bg-primary text-white px-3 py-1 rounded-md text-xs"
+                  >
+                    Reconnect
+                  </button>
+                ),
+                variant: "destructive",
+                duration: 5000,
+              });
+              
+              // Update settings to reflect disconnected state
+              const updatedSettings = {
+                ...settings,
+                googleCalendarConnected: false
+              };
+              setSettings(updatedSettings);
+              saveSettings(updatedSettings);
+            }
+          } catch (error) {
+            console.error("Error creating calendar event:", error);
           }
         } else {
           // Prompt user to connect Google Calendar

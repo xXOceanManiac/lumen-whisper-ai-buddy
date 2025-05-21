@@ -9,10 +9,13 @@ const OPENAI_KEY_STORAGE_KEY = 'lumen-openai-key';
 // Default settings
 export const defaultSettings: Settings = {
   openaiApiKey: '',
+  voiceActivation: true,
+  voiceId: "en-US-Standard-B",
+  speechRate: 1,
+  googleCalendarConnected: false,
   elevenlabsApiKey: '',
   useElevenlabs: false,
   useWhisper: false,
-  voiceActivation: true,
 };
 
 // Settings management
