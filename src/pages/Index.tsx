@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { CalendarEvent, Message, Settings } from "@/types";
 import { getSettings, saveSettings, getChatHistory, saveChatHistory, defaultSettings } from "@/utils/localStorage";
@@ -157,6 +156,44 @@ const Index = () => {
     verifyCalendarConnection();
   }, [settings.googleCalendarConnected, settings.openaiApiKey]);
   
+  // Helper function to intelligently add streaming chunks with proper spacing
+  const appendStreamingChunk = (currentText: string, newChunk: string): string => {
+    // Trim the chunk to remove any whitespace artifacts
+    const trimmedChunk = newChunk.trim();
+    if (!trimmedChunk) return currentText; // Skip empty chunks
+    
+    let result = currentText;
+    
+    // If we have existing content
+    if (result) {
+      const lastChar = result.charAt(result.length - 1);
+      const firstChar = trimmedChunk.charAt(0);
+      
+      // Check if we need to add a space between words
+      const needsSpace = 
+        // Last char is a letter/number and next char is a letter/number
+        (/[a-zA-Z0-9]/.test(lastChar) && /[a-zA-Z0-9]/.test(firstChar)) ||
+        // Special handling for some scenarios (like "word. Another" needs a space)
+        (lastChar === '.' && /[A-Z]/.test(firstChar));
+      
+      // Check if we need to remove a trailing space before punctuation
+      const needsToRemoveSpace =
+        result.endsWith(' ') && 
+        ['.', ',', '!', '?', ':', ';', ')', ']', '}'].includes(firstChar);
+      
+      if (needsToRemoveSpace) {
+        // Remove trailing space before adding punctuation
+        result = result.slice(0, -1);
+      } else if (needsSpace && !result.endsWith(' ')) {
+        // Add a space between words when needed
+        result += ' ';
+      }
+    }
+    
+    // Append the new chunk
+    return result + trimmedChunk;
+  };
+  
   // Functions
   const handleToggleListen = () => {
     if (isListening) {
@@ -247,8 +284,8 @@ const Index = () => {
         settings.openaiApiKey,
         "user-id", // Replace with actual user ID
         (chunk) => {
-          // Update the streaming response as chunks arrive
-          setStreamingResponse(prev => prev + chunk);
+          // Use the smarter function to update the streaming response with better spacing
+          setStreamingResponse(prev => appendStreamingChunk(prev, chunk));
         }
       );
       
@@ -407,10 +444,10 @@ const Index = () => {
             <ChatBubble key={message.id} message={message} />
           ))}
           
-          {/* Streaming response */}
+          {/* Streaming response with improved styling */}
           {streamingResponse && (
             <div className="bubble-assistant animate-fade-in">
-              <div className="text-sm">{streamingResponse}</div>
+              <div className="text-sm whitespace-pre-wrap break-words">{streamingResponse}</div>
             </div>
           )}
           

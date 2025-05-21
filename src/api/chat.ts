@@ -81,6 +81,44 @@ export const callChatApi = async (
 
     console.log("✅ API response stream received");
     
+    // Helper function to intelligently append chunks with proper spacing
+    const appendChunkWithSmartSpacing = (currentContent: string, newChunk: string): string => {
+      // Trim the chunk to remove any whitespace artifacts
+      const trimmedChunk = newChunk.trim();
+      if (!trimmedChunk) return currentContent; // Skip empty chunks
+      
+      let result = currentContent;
+      
+      // If we have existing content
+      if (result) {
+        const lastChar = result.charAt(result.length - 1);
+        const firstChar = trimmedChunk.charAt(0);
+        
+        // Check if we need to add a space between words
+        const needsSpace = 
+          // Last char is a letter/number and next char is a letter/number
+          (/[a-zA-Z0-9]/.test(lastChar) && /[a-zA-Z0-9]/.test(firstChar)) ||
+          // Special handling for some scenarios (like "word. Another" needs a space)
+          (lastChar === '.' && /[A-Z]/.test(firstChar));
+        
+        // Check if we need to remove a trailing space before punctuation
+        const needsToRemoveSpace =
+          result.endsWith(' ') && 
+          ['.', ',', '!', '?', ':', ';', ')', ']', '}'].includes(firstChar);
+        
+        if (needsToRemoveSpace) {
+          // Remove trailing space before adding punctuation
+          result = result.slice(0, -1);
+        } else if (needsSpace && !result.endsWith(' ')) {
+          // Add a space between words when needed
+          result += ' ';
+        }
+      }
+      
+      // Append the new chunk
+      return result + trimmedChunk;
+    };
+    
     // Handle streaming response
     if (onChunk) {
       // Process the streaming response
@@ -106,28 +144,9 @@ export const callChatApi = async (
               if (content === '[DONE]') {
                 console.log("Stream completed with [DONE] marker");
               } else {
-                // Add the chunk with proper spacing logic
-                // Only add a space if it doesn't already end with a space or special character
-                if (completeContent && 
-                    !completeContent.endsWith(' ') && 
-                    !completeContent.endsWith('\n') && 
-                    !completeContent.endsWith('.') &&
-                    !completeContent.endsWith('!') &&
-                    !completeContent.endsWith('?') &&
-                    !completeContent.endsWith(',') &&
-                    !completeContent.endsWith(':') &&
-                    !completeContent.endsWith(';')) {
-                  
-                  // Check if current chunk starts with a special character
-                  // If it does, don't add a space before it
-                  const shouldAddSpace = ![' ', '\n', '.', '!', '?', ',', ':', ';'].includes(content[0]);
-                  if (shouldAddSpace) {
-                    completeContent += ' ';
-                  }
-                }
-                
-                completeContent += content;
-                onChunk(content);
+                // Apply smart spacing logic when adding new content
+                completeContent = appendChunkWithSmartSpacing(completeContent, content);
+                onChunk(content); // Pass the chunk to the callback
               }
             }
             // We can ignore 'event: done' lines as we already check for '[DONE]'
