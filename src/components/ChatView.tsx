@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -315,7 +316,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           <ChatMessage key={message.id} message={message} />
         ))}
         
-        {/* Streaming response */}
+        {/* Streaming response with improved styling */}
         {streamingResponse && (
           <div className="flex items-start mb-4">
             <div className="flex-shrink-0 mr-3">
@@ -324,7 +325,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
               </div>
             </div>
             <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg max-w-[80%] animate-fade-in">
-              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{streamingResponse}</p>
+              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">{streamingResponse}</p>
             </div>
           </div>
         )}

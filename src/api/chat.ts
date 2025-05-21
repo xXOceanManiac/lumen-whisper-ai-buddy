@@ -106,7 +106,26 @@ export const callChatApi = async (
               if (content === '[DONE]') {
                 console.log("Stream completed with [DONE] marker");
               } else {
-                // Send the clean content (without the 'data:' prefix) to the callback
+                // Add the chunk with proper spacing logic
+                // Only add a space if it doesn't already end with a space or special character
+                if (completeContent && 
+                    !completeContent.endsWith(' ') && 
+                    !completeContent.endsWith('\n') && 
+                    !completeContent.endsWith('.') &&
+                    !completeContent.endsWith('!') &&
+                    !completeContent.endsWith('?') &&
+                    !completeContent.endsWith(',') &&
+                    !completeContent.endsWith(':') &&
+                    !completeContent.endsWith(';')) {
+                  
+                  // Check if current chunk starts with a special character
+                  // If it does, don't add a space before it
+                  const shouldAddSpace = ![' ', '\n', '.', '!', '?', ',', ':', ';'].includes(content[0]);
+                  if (shouldAddSpace) {
+                    completeContent += ' ';
+                  }
+                }
+                
                 completeContent += content;
                 onChunk(content);
               }
