@@ -72,62 +72,13 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
   try {
     console.log(`🔄 Fetching OpenAI key for googleId: ${googleId}`);
     
-    // Try fetching from Supabase first
-    const { data: supabaseData, error: supabaseError } = await supabase
-      .from('openai_keys')
-      .select('key_content, iv')
-      .eq('google_id', googleId)
-      .maybeSingle();
-    
-    if (supabaseError) {
-      console.error(`❌ Supabase error fetching OpenAI key: ${supabaseError.message}`);
-    }
-    
-    if (supabaseData?.key_content && supabaseData?.iv) {
-      try {
-        // Request the decrypted key from the server instead of decrypting it client-side
-        const response = await fetch(`${API_BASE_URL}/api/decrypt-key`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            encryptedKey: supabaseData.key_content,
-            iv: supabaseData.iv,
-            googleId
-          })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          const decryptedKey = data.apiKey;
-          
-          // Validate key format
-          if (!validateOpenAIKey(decryptedKey)) {
-            console.error(`❌ Decrypted API key has invalid format`);
-            return null;
-          }
-          
-          console.log(`✅ Successfully retrieved and decrypted OpenAI key from server`);
-          console.log(`Key format: starts with ${decryptedKey.substring(0, 7)}..., length: ${decryptedKey.length} chars`);
-          return decryptedKey;
-        } else {
-          console.error(`❌ Failed to decrypt API key via server: ${response.status}`);
-          return null;
-        }
-      } catch (err) {
-        console.error(`❌ Failed to decrypt API key:`, err);
-        return null;
-      }
-    }
-    
-    // If not in Supabase, fall back to backend API
-    console.log(`⚠️ Key not found in Supabase, trying backend API`);
-    
+    // Call backend API to get the OpenAI key - No more Supabase direct call or client-side decryption
     const response = await fetch(`${API_BASE_URL}/api/get-openai-key?googleId=${encodeURIComponent(googleId)}`, {
       method: 'GET',
       credentials: 'include', // Required to include session cookie
+      headers: {
+        'Accept': 'application/json',
+      }
     });
     
     if (response.ok) {
@@ -144,26 +95,6 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         
         console.log(`✅ Successfully retrieved OpenAI key from API (${key.length} chars)`);
         console.log(`Key format: ${key.substring(0, 7)}...`);
-        
-        // Save the key to Supabase through the server endpoint
-        try {
-          const saveResponse = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ googleId, openaiApiKey: key })
-          });
-          
-          if (!saveResponse.ok) {
-            console.error(`❌ Failed to save key to Supabase via server: ${saveResponse.status}`);
-          } else {
-            console.log(`✅ Successfully saved encrypted key to Supabase via server`);
-          }
-        } catch (err) {
-          console.error(`❌ Error saving key to Supabase via server: ${err}`);
-        }
         
         return key;
       } else {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { saveOpenAIKey } from "@/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,7 +109,7 @@ const ApiKeySettings = () => {
       console.log("🔄 Saving new OpenAI API key for googleId:", user.googleId);
       console.log("Key format:", trimmedKey.substring(0, 7) + "...", "length:", trimmedKey.length);
       
-      // Send the full API key to the server for encryption and storage
+      // Send the full API key to the server for encryption and storage using updated route
       const success = await saveOpenAIKey(user.googleId, trimmedKey);
       
       if (success) {

@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     saveOpenAIKeyToStorage(trimmedKey);
     setHasCompletedOnboarding(true);
     
-    // If we have a user, also save the key to Supabase
+    // If we have a user, also save the key to backend
     if (user?.googleId) {
       saveKeyToServer(user.googleId, trimmedKey);
     } else {
@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Function to fetch OpenAI API key
+  // Function to fetch OpenAI API key from backend
   const fetchOpenAIKey = async (userId: string): Promise<boolean> => {
     try {
       console.log("🔄 Fetching OpenAI API key for googleId:", userId);
