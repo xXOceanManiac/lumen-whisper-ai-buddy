@@ -9,6 +9,7 @@ import LoginView from "./components/LoginView";
 import ChatView from "./components/ChatView";
 import OnboardingView from "./components/OnboardingView";
 import LogoutView from "./components/LogoutView";
+import CalendarPlugin from "./components/CalendarPlugin";
 import { AnimatePresence } from "framer-motion";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,16 @@ const AuthenticatedApp = () => {
     <AnimatePresence mode="wait">
       <Routes>
         <Route path="/logout" element={<LogoutView />} />
+        <Route 
+          path="/calendar" 
+          element={
+            isAuthenticated && user && hasCompletedOnboarding ? (
+              <CalendarPlugin />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
         <Route
           path="/"
           element={

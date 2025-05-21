@@ -1,13 +1,17 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
 import { useAuth } from "@/contexts/AuthContext";
-import { Send, LogOut, RefreshCw } from "lucide-react";
+import { Send, LogOut, RefreshCw, Calendar } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import ApiKeySettings from "./ApiKeySettings";
+import CalendarEventsList from "./CalendarEventsList";
+import { fetchCalendarEvents } from "@/api/calendar";
+import { useCalendar } from "@/hooks/useCalendar";
 
 interface User {
   googleId: string;
@@ -26,6 +30,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRefreshingKey, setIsRefreshingKey] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
+  const [showCalendar, setShowCalendar] = useState(false);
   
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,6 +38,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   
   // Use the AuthContext to get authentication data
   const { user: authUser, openaiKey, refreshOpenAIKey } = useAuth();
+  const { events, isLoading: isCalendarLoading, refreshEvents } = useCalendar();
   
   // Ensure we're using the user from props or from auth context
   const currentUser = user || authUser;
@@ -43,7 +49,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       {
         id: "welcome",
         role: "assistant",
-        content: "Hello! I'm your AI assistant. How can I help you today?",
+        content: "Hello! I'm your AI assistant. How can I help you today? You can ask about your calendar or schedule events.",
         timestamp: Date.now()
       }
     ]);
@@ -113,6 +119,14 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       !/[\s\.,!?;:]$/.test(current);
     
     return current + (needsSpace ? ' ' : '') + newChunk;
+  };
+
+  // Toggle calendar view
+  const handleToggleCalendar = () => {
+    setShowCalendar(prev => !prev);
+    if (!showCalendar) {
+      refreshEvents();
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -217,6 +231,18 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         }))
       });
       
+      // Check if this is a calendar query
+      const lowerInput = input.toLowerCase();
+      if (
+        lowerInput.includes("calendar") || 
+        lowerInput.includes("schedule") || 
+        lowerInput.includes("event") ||
+        lowerInput.includes("meeting") ||
+        lowerInput.includes("appointment")
+      ) {
+        console.log("📅 Detected possible calendar query");
+      }
+      
       // Call backend Chat API with googleId and streaming support
       console.log("🔄 Calling chat API with streaming...");
       try {
@@ -257,13 +283,23 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           timestamp: Date.now()
         };
         
-        setMessages(prev => [...prev, assistantMessage]);
-        
         // Handle calendar event if present
         if (response.calendarEvent) {
-          // You can add calendar event handling here in the future
+          assistantMessage.calendarEvent = response.calendarEvent;
           console.log("📅 Calendar event detected:", response.calendarEvent);
+          
+          // Refresh calendar events after a short delay
+          setTimeout(() => {
+            refreshEvents();
+          }, 1000);
+          
+          toast({
+            title: "Calendar Event",
+            description: `"${response.calendarEvent.summary}" added to your calendar.`,
+          });
         }
+        
+        setMessages(prev => [...prev, assistantMessage]);
       } catch (error) {
         console.error("❌ Error processing chat API response:", error);
         throw error; // Re-throw to be caught by outer catch
@@ -320,6 +356,14 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleToggleCalendar}
+            className={`flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-2 ${showCalendar ? 'text-primary' : ''}`}
+            aria-label={showCalendar ? "Hide Calendar" : "Show Calendar"}
+          >
+            <Calendar size={18} />
+            <span className="text-sm">{showCalendar ? "Hide Calendar" : "Calendar"}</span>
+          </button>
           <ApiKeySettings />
           <button
             onClick={handleRefreshApiKey}
@@ -341,51 +385,64 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         </div>
       </header>
       
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
-        
-        {/* Streaming response with improved styling */}
-        {streamingResponse && (
-          <div className="flex items-start mb-4">
-            <div className="flex-shrink-0 mr-3">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
-                AI
+      <div className="flex flex-1 overflow-hidden">
+        {/* Main Chat Area */}
+        <div className={`flex flex-col ${showCalendar ? 'w-2/3' : 'w-full'}`}>
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+            
+            {/* Streaming response with improved styling */}
+            {streamingResponse && (
+              <div className="flex items-start mb-4">
+                <div className="flex-shrink-0 mr-3">
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
+                    AI
+                  </div>
+                </div>
+                <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg max-w-[80%] animate-fade-in">
+                  <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words leading-relaxed">
+                    {streamingResponse}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg max-w-[80%] animate-fade-in">
-              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words leading-relaxed">
-                {streamingResponse}
-              </p>
-            </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+          
+          {/* Input Area */}
+          <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                disabled={isProcessing}
+                className="flex-1 p-3 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isProcessing}
+                className="p-3 rounded-full bg-primary text-white disabled:opacity-50 hover:bg-primary/90"
+                aria-label="Send message"
+              >
+                <Send size={20} />
+              </button>
+            </form>
+          </div>
+        </div>
+        
+        {/* Calendar Panel */}
+        {showCalendar && (
+          <div className="w-1/3 border-l border-gray-200 dark:border-gray-800 overflow-y-auto p-4">
+            <h3 className="text-lg font-medium mb-4">Your Calendar</h3>
+            <CalendarEventsList />
           </div>
         )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-gray-800 p-4">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            disabled={isProcessing}
-            className="flex-1 p-3 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isProcessing}
-            className="p-3 rounded-full bg-primary text-white disabled:opacity-50 hover:bg-primary/90"
-            aria-label="Send message"
-          >
-            <Send size={20} />
-          </button>
-        </form>
       </div>
     </motion.div>
   );

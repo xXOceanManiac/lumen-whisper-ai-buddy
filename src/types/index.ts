@@ -1,27 +1,10 @@
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
   calendarEvent?: CalendarEvent;
-}
-
-export interface CalendarEvent {
-  type: 'calendar';
-  title: string;
-  start: string;
-  end: string;
-}
-
-export interface Settings {
-  openaiApiKey: string;
-  elevenlabsApiKey?: string;
-  useElevenlabs: boolean;
-  useWhisper: boolean;
-  voiceActivation: boolean;
-  voiceId?: string;
-  googleCalendarConnected?: boolean;
 }
 
 export interface ChatHistory {
@@ -29,23 +12,35 @@ export interface ChatHistory {
   lastUpdated: number;
 }
 
-// API response types
-export interface OpenAIResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: Array<{
-    index: number;
-    message: {
-      role: string;
-      content: string;
-    };
-    finish_reason: string;
-  }>;
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+export interface Settings {
+  openaiApiKey: string;
+  voiceActivation: boolean;
+  voiceId: string;
+  speechRate: number;
+  googleCalendarConnected: boolean;
 }
+
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime: string;
+    timeZone?: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone?: string;
+  };
+  created?: string;
+  updated?: string;
+  status?: string;
+}
+
+export const defaultSettings: Settings = {
+  openaiApiKey: "",
+  voiceActivation: false,
+  voiceId: "en-US-Standard-B",
+  speechRate: 1,
+  googleCalendarConnected: false,
+};

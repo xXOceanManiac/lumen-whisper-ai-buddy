@@ -1,6 +1,7 @@
 
 import { Message } from "@/types";
 import { validateOpenAIKeyFormat } from "@/utils/localStorage";
+import { parseCalendarCommand } from "./calendar";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
@@ -34,6 +35,20 @@ export const callChatApi = async (
     if (!googleId) {
       console.error("❌ Missing googleId in callChatApi");
       throw new Error("googleId is required for chat API calls");
+    }
+    
+    // Check if the last message might be a calendar command
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role === 'user') {
+      const calendarCommand = parseCalendarCommand(lastMessage.content);
+      if (calendarCommand.isCalendarCommand) {
+        console.log(`📅 Detected calendar ${calendarCommand.type} command`);
+        // Add this information to the request so the backend knows it's calendar-related
+        formattedMessages.push({
+          role: 'system',
+          content: `This appears to be a calendar ${calendarCommand.type} request. Process it accordingly.`
+        });
+      }
     }
     
     // Log the detailed request payload
@@ -216,4 +231,3 @@ export const callChatApi = async (
     throw error;
   }
 };
-

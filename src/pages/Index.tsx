@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { CalendarEvent, Message, Settings } from "@/types";
 import { getSettings, saveSettings, getChatHistory, saveChatHistory, defaultSettings } from "@/utils/localStorage";
@@ -6,14 +7,17 @@ import { speak, stopSpeaking, isSpeechSynthesisSupported } from "@/utils/textToS
 import { startWakeWordDetection, stopWakeWordDetection } from "@/utils/wakeWord";
 import { callChatApi } from "@/api/chat";
 import { createCalendarEvent, connectGoogleCalendar, checkGoogleCalendarAuth } from "@/api/calendar";
+import { useCalendar } from "@/hooks/useCalendar";
+import { useAuth } from "@/contexts/AuthContext";
 
 import ChatBubble from "@/components/ChatBubble";
 import MicButton from "@/components/MicButton";
 import AssistantHeader from "@/components/AssistantHeader";
 import SettingsDrawer from "@/components/SettingsDrawer";
 import VoiceActivationIndicator from "@/components/VoiceActivationIndicator";
+import CalendarEventsList from "@/components/CalendarEventsList";
 import { Calendar, Mic, Send } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   // State
@@ -26,6 +30,17 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [wakeWordActive, setWakeWordActive] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const [calendarConfirmation, setCalendarConfirmation] = useState<{
+    summary: string;
+    description: string;
+    start: string;
+    end: string;
+  } | null>(null);
+  
+  // Get user from Auth context
+  const { user } = useAuth();
+  const { refreshEvents } = useCalendar();
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -179,6 +194,18 @@ const Index = () => {
     return current + (needsSpace ? ' ' : '') + newChunk;
   };
   
+  // Check if user message is asking to add something to calendar
+  const checkForCalendarAddRequest = (text: string): boolean => {
+    const lowerText = text.toLowerCase();
+    return (
+      lowerText.includes("add this to my calendar") || 
+      lowerText.includes("add this to calendar") ||
+      lowerText.includes("create a calendar") ||
+      lowerText.includes("add to my calendar") ||
+      lowerText.includes("put this on my calendar")
+    );
+  };
+  
   // Functions
   const handleToggleListen = () => {
     if (isListening) {
@@ -228,6 +255,130 @@ const Index = () => {
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
     
+    // If calendar confirmation is active, handle it separately
+    if (calendarConfirmation) {
+      const confirmText = text.toLowerCase();
+      if (confirmText.includes("yes") || confirmText.includes("confirm") || confirmText.includes("sure")) {
+        // User confirmed calendar event
+        const { summary, description, start, end } = calendarConfirmation;
+        
+        // Add a message showing confirmation
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: text,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        setCurrentText("");
+        setCalendarConfirmation(null);
+        
+        try {
+          if (!user?.googleId) {
+            throw new Error("User ID not available");
+          }
+          
+          const event = await createCalendarEvent(
+            user.googleId,
+            summary,
+            description,
+            start,
+            end
+          );
+          
+          // Add confirmation message
+          const confirmMessage: Message = {
+            id: "calendar-" + Date.now().toString(),
+            role: "assistant",
+            content: `Great! I've added "${summary}" to your calendar on ${new Date(start).toLocaleDateString()} at ${new Date(start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}.`,
+            timestamp: Date.now(),
+            calendarEvent: event,
+          };
+          
+          setMessages((prev) => [...prev, confirmMessage]);
+          refreshEvents();
+          
+        } catch (error) {
+          console.error("Error creating calendar event:", error);
+          
+          const errorMessage: Message = {
+            id: "error-" + Date.now().toString(),
+            role: "assistant",
+            content: "Sorry, I encountered an error creating the calendar event. Please try again.",
+            timestamp: Date.now(),
+          };
+          
+          setMessages((prev) => [...prev, errorMessage]);
+        }
+        return;
+      } else {
+        // User declined calendar event
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: text,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        
+        const declineMessage: Message = {
+          id: "calendar-decline-" + Date.now().toString(),
+          role: "assistant",
+          content: "No problem. I've canceled adding this event to your calendar.",
+          timestamp: Date.now(),
+        };
+        
+        setMessages((prev) => [...prev, declineMessage]);
+        setCurrentText("");
+        setCalendarConfirmation(null);
+        return;
+      }
+    }
+    
+    // Check if user is asking to add something to calendar
+    if (checkForCalendarAddRequest(text)) {
+      // Ask for confirmation with calendar details
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: text,
+        timestamp: Date.now(),
+      };
+      
+      setMessages((prev) => [...prev, userMessage]);
+      setCurrentText("");
+      
+      // Simple calendar event generation (in a real app, this would use more sophisticated NLP)
+      // For demo purposes, we'll create a meeting tomorrow at noon
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(12, 0, 0, 0);
+      
+      const end = new Date(tomorrow);
+      end.setHours(13, 0, 0, 0);
+      
+      const eventDetails = {
+        summary: "Meeting",
+        description: "Added via Lumen",
+        start: tomorrow.toISOString(),
+        end: end.toISOString(),
+      };
+      
+      setCalendarConfirmation(eventDetails);
+      
+      // Add confirmation request message
+      const confirmMessage: Message = {
+        id: "calendar-confirm-" + Date.now().toString(),
+        role: "assistant",
+        content: `I'll add an event to your calendar. Does this look correct?\n\nEvent: ${eventDetails.summary}\nWhen: ${new Date(eventDetails.start).toLocaleDateString()} at ${new Date(eventDetails.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n\nPlease confirm with "Yes" or "No".`,
+        timestamp: Date.now(),
+      };
+      
+      setMessages((prev) => [...prev, confirmMessage]);
+      
+      return;
+    }
+    
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -267,7 +418,7 @@ const Index = () => {
       const response = await callChatApi(
         [...messages, userMessage],
         settings.openaiApiKey,
-        "user-id", // Replace with actual user ID
+        user?.googleId, // Use googleId from auth context
         (chunk) => {
           // Use the improved formatting function for streaming response
           setStreamingResponse(prev => formatStreamingContent(prev, chunk));
@@ -310,6 +461,7 @@ const Index = () => {
               description: `Added "${response.calendarEvent.title}" to your calendar.`,
               duration: 3000,
             });
+            refreshEvents();
           } else {
             // Handle calendar event creation failure with reconnection prompt
             toast({
@@ -418,6 +570,11 @@ const Index = () => {
     localStorage.removeItem('googleOAuthState');
     connectGoogleCalendar();
   };
+
+  // Toggle calendar view
+  const toggleCalendarView = () => {
+    setShowCalendarView(prev => !prev);
+  };
   
   // Check if speech is supported
   const speechSupported = isSpeechRecognitionSupported();
@@ -432,31 +589,44 @@ const Index = () => {
       />
       
       <main className="flex-1 overflow-hidden flex flex-col">
-        {/* Chat Messages */}
-        <div className="chat-messages flex-1 overflow-y-auto">
-          {messages.map((message) => (
-            <ChatBubble key={message.id} message={message} />
-          ))}
-          
-          {/* Streaming response with improved styling */}
-          {streamingResponse && (
-            <div className="bubble-assistant animate-fade-in">
-              <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                {streamingResponse}
+        {showCalendarView ? (
+          // Calendar View
+          <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-gray-900">
+            <button 
+              onClick={toggleCalendarView}
+              className="mb-4 text-primary hover:underline flex items-center"
+            >
+              ← Back to chat
+            </button>
+            <CalendarPlugin />
+          </div>
+        ) : (
+          // Chat Messages
+          <div className="chat-messages flex-1 overflow-y-auto">
+            {messages.map((message) => (
+              <ChatBubble key={message.id} message={message} />
+            ))}
+            
+            {/* Streaming response with improved styling */}
+            {streamingResponse && (
+              <div className="bubble-assistant animate-fade-in">
+                <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                  {streamingResponse}
+                </div>
               </div>
-            </div>
-          )}
-          
-          {/* Current text being spoken/recorded */}
-          {isListening && currentText && (
-            <div className="bubble-user animate-fade-in opacity-70">
-              <div className="text-sm">{currentText}</div>
-            </div>
-          )}
-          
-          {/* Empty div for scrolling to bottom */}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            
+            {/* Current text being spoken/recorded */}
+            {isListening && currentText && (
+              <div className="bubble-user animate-fade-in opacity-70">
+                <div className="text-sm">{currentText}</div>
+              </div>
+            )}
+            
+            {/* Empty div for scrolling to bottom */}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
         
         {/* Input Area */}
         <div className="p-4 bg-sidebar border-t border-gray-200 dark:border-gray-800">
@@ -501,15 +671,25 @@ const Index = () => {
               Clear Chat
             </button>
             
-            {!settings.googleCalendarConnected && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleConnectGoogleCalendar}
-                className="text-xs flex items-center gap-1 text-lumen-purple hover:text-lumen-lightPurple"
+                onClick={toggleCalendarView}
+                className={`text-xs flex items-center gap-1 ${showCalendarView ? "text-lumen-purple" : "text-lumen-gray hover:text-lumen-purple"}`}
               >
                 <Calendar size={12} />
-                <span>Connect Google Calendar</span>
+                <span>{showCalendarView ? "Hide Calendar" : "View Calendar"}</span>
               </button>
-            )}
+              
+              {!settings.googleCalendarConnected && (
+                <button
+                  onClick={handleConnectGoogleCalendar}
+                  className="text-xs flex items-center gap-1 text-lumen-purple hover:text-lumen-lightPurple ml-3"
+                >
+                  <Calendar size={12} />
+                  <span>Connect Google Calendar</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </main>
