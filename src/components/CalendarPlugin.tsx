@@ -2,7 +2,7 @@
 import React from 'react';
 import CalendarEventsList from './CalendarEventsList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Clock } from 'lucide-react';
 
 const CalendarPlugin: React.FC = () => {
   return (
@@ -31,8 +31,28 @@ const CalendarPlugin: React.FC = () => {
             </li>
             <li className="flex items-start">
               <span className="font-medium mr-2">•</span>
-              "Schedule a doctor appointment next Monday at 10am"
+              "Remind me to call mom at 5pm"
             </li>
+            <li className="flex items-start">
+              <span className="font-medium mr-2">•</span>
+              "Set a reminder for my doctor appointment on Friday at 10am"
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
+      
+      <Card className="mt-4">
+        <CardHeader className="pb-2">
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-2 text-primary" />
+            <CardTitle className="text-sm">Reminder Examples</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ul className="text-xs space-y-1 text-gray-600">
+            <li>"Remind me to walk the dog at 3 PM"</li>
+            <li>"Set a reminder to call mom tomorrow at noon"</li>
+            <li>"Add a reminder for my meeting on Friday at 10"</li>
           </ul>
         </CardContent>
       </Card>

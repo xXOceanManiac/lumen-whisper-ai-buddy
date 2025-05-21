@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -10,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import ApiKeySettings from "./ApiKeySettings";
 import CalendarEventsList from "./CalendarEventsList";
-import { fetchCalendarEvents } from "@/api/calendar";
+import { createReminderEvent, fetchCalendarEvents, parseReminderText } from "@/api/calendar";
 import { useCalendar } from "@/hooks/useCalendar";
 
 interface User {
@@ -231,16 +230,56 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         }))
       });
       
-      // Check if this is a calendar query
-      const lowerInput = input.toLowerCase();
+      // Check if this is a reminder request
+      const inputLower = input.toLowerCase();
       if (
-        lowerInput.includes("calendar") || 
-        lowerInput.includes("schedule") || 
-        lowerInput.includes("event") ||
-        lowerInput.includes("meeting") ||
-        lowerInput.includes("appointment")
+        (inputLower.includes("remind") || inputLower.includes("reminder")) &&
+        (inputLower.includes("to") || inputLower.includes("for"))
       ) {
-        console.log("📅 Detected possible calendar query");
+        console.log("🔔 Detected possible reminder request");
+        
+        // Try to parse the reminder
+        const reminderData = parseReminderText(input);
+        
+        // If successfully parsed, create the reminder
+        if (reminderData.success && reminderData.task && reminderData.dateTime) {
+          try {
+            console.log("📅 Creating reminder:", reminderData);
+            
+            // Create the calendar event for the reminder
+            const event = await createReminderEvent(
+              googleId,
+              reminderData.task,
+              reminderData.dateTime
+            );
+            
+            // Format dates for display
+            const formattedDate = reminderData.dateTime.toLocaleString([], {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            
+            // Create response message
+            const assistantMessage: Message = {
+              id: Date.now().toString(),
+              role: "assistant",
+              content: `📅 Got it! I'll remind you to ${reminderData.task} on ${formattedDate}.`,
+              timestamp: Date.now(),
+              calendarEvent: event
+            };
+            
+            setMessages(prev => [...prev, assistantMessage]);
+            refreshEvents();
+            setIsProcessing(false);
+            return;
+          } catch (error) {
+            console.error("❌ Error creating reminder:", error);
+            // Continue to regular API call if reminder creation fails
+          }
+        }
       }
       
       // Call backend Chat API with googleId and streaming support
@@ -293,8 +332,11 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
             refreshEvents();
           }, 1000);
           
+          // Check if this is a reminder or regular calendar event
+          const isReminder = response.calendarEvent.description?.includes("Auto-added by Lumen reminder");
+          
           toast({
-            title: "Calendar Event",
+            title: isReminder ? "Reminder Set" : "Calendar Event",
             description: `"${response.calendarEvent.summary}" added to your calendar.`,
           });
         }
