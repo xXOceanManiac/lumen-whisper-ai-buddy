@@ -1,5 +1,6 @@
 
 import { Settings } from "@/types";
+import LumenLogo from "./LumenLogo";
 
 interface AssistantHeaderProps {
   onOpenSettings: () => void;
@@ -11,9 +12,7 @@ const AssistantHeader = ({ onOpenSettings, settings, isProcessing }: AssistantHe
   return (
     <header className="bg-white shadow-sm flex items-center justify-between p-4 sticky top-0 z-10">
       <div className="flex items-center space-x-3">
-        <div className="h-8 w-8 rounded-full bg-lumen-blue flex items-center justify-center">
-          <span className="text-white font-semibold">L</span>
-        </div>
+        <LumenLogo size={32} />
         <h1 className="text-xl font-semibold">Lumen</h1>
       </div>
       
