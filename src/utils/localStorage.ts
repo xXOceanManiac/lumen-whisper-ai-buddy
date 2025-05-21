@@ -31,7 +31,8 @@ export const validateOpenAIKeyFormat = (key: string): boolean => {
   
   if (!trimmedKey) return false;
   
-  // OpenAI keys must start with "sk-" and be at least 48 characters long
+  // OpenAI keys must start with "sk-" (including newer sk-proj-* keys) and be at least 48 characters long
+  // SK-Proj keys can be 164+ characters
   if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
     console.error(`❌ Invalid API key format. Key must start with 'sk-' and be at least 48 characters (found ${trimmedKey.length} chars)`);
     return false;
@@ -51,7 +52,7 @@ export const saveOpenAIKey = (key: string): void => {
   
   // Store the full, unmodified key
   localStorage.setItem(OPENAI_KEY_STORAGE_KEY, trimmedKey);
-  console.log(`✅ Saved full OpenAI API key to localStorage (${trimmedKey.length} chars, starts with ${trimmedKey.substring(0, 5)})`);
+  console.log(`✅ Saved full OpenAI API key to localStorage (${trimmedKey.length} chars, starts with ${trimmedKey.substring(0, 7)})`);
 };
 
 export const getOpenAIKey = (): string | null => {
@@ -62,7 +63,7 @@ export const getOpenAIKey = (): string | null => {
       console.error("❌ Retrieved invalid OpenAI API key format from localStorage");
       return null;
     }
-    console.log(`✅ Retrieved full OpenAI API key from localStorage (${key.length} chars, starts with ${key.substring(0, 5)})`);
+    console.log(`✅ Retrieved full OpenAI API key from localStorage (${key.length} chars, starts with ${key.substring(0, 7)})`);
     return key;
   }
   return null;

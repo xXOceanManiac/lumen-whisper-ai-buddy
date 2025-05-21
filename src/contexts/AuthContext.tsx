@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { checkAuth, getOpenAIKey, validateOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -78,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const trimmedKey = key ? key.trim() : '';
     
     if (!validateOpenAIKeyFormat(trimmedKey)) {
-      console.error("❌ Invalid OpenAI API key format:", trimmedKey ? trimmedKey.substring(0, 5) + "..." : "null/empty");
+      console.error("❌ Invalid OpenAI API key format:", trimmedKey ? trimmedKey.substring(0, 7) + "..." : "null/empty");
       toast({
         title: "Invalid API Key",
         description: "API key should start with sk- and be at least 48 characters long",
@@ -87,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    console.log(`✅ Setting OpenAI API key: ${trimmedKey.substring(0, 5)}... (${trimmedKey.length} chars)`);
+    console.log(`✅ Setting OpenAI API key: ${trimmedKey.substring(0, 7)}... (${trimmedKey.length} chars)`);
     // Store the FULL unmodified key
     setOpenaiKey(trimmedKey);
     saveOpenAIKeyToStorage(trimmedKey);
@@ -122,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const apiKey = await getOpenAIKey(userId);
       
       if (apiKey && validateOpenAIKeyFormat(apiKey)) {
-        console.log(`✅ OpenAI key fetched: ${apiKey.substring(0, 5)}... (${apiKey.length} chars)`);
+        console.log(`✅ OpenAI key fetched: ${apiKey.substring(0, 7)}... (${apiKey.length} chars)`);
         setOpenaiKey(apiKey);
         saveOpenAIKeyToStorage(apiKey);
         setHasCompletedOnboarding(true);

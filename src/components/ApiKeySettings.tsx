@@ -77,21 +77,11 @@ const ApiKeySettings = () => {
     if (!trimmedKey) return false;
     
     // OpenAI keys must start with "sk-" and be at least 48 characters long
+    // Also support sk-proj-* keys which can be 164+ characters
     if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
       return false;
     }
     return true;
-  };
-
-  // Helper function to generate a simple IV for encryption purposes
-  const generateSimpleIV = (): string => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    const length = 16; // Standard IV length
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
   };
 
   const handleSaveApiKey = async () => {
@@ -119,31 +109,9 @@ const ApiKeySettings = () => {
     
     try {
       console.log("🔄 Saving new OpenAI API key for googleId:", user.googleId);
-      console.log("Key format:", trimmedKey.substring(0, 5) + "..." + trimmedKey.slice(-4), "length:", trimmedKey.length);
+      console.log("Key format:", trimmedKey.substring(0, 7) + "...", "length:", trimmedKey.length);
       
-      // First attempt to save in Supabase directly
-      try {
-        // Generate a simple IV for encryption purposes
-        const iv = generateSimpleIV();
-        
-        const { error } = await supabase
-          .from('openai_keys')
-          .upsert({ 
-            google_id: user.googleId, 
-            key_content: trimmedKey,
-            iv: iv
-          });
-        
-        if (error) {
-          console.error(`❌ Failed to save key to Supabase: ${error.message}`);
-        } else {
-          console.log(`✅ Successfully saved key to Supabase`);
-        }
-      } catch (error) {
-        console.error(`❌ Error saving key to Supabase:`, error);
-      }
-      
-      // Also save via backend API
+      // Send the full API key to the server for encryption and storage
       const success = await saveOpenAIKey(user.googleId, trimmedKey);
       
       if (success) {
@@ -167,7 +135,7 @@ const ApiKeySettings = () => {
         // Show confirmation dialog with appropriate message
         setConfirmationMessage({
           title: "API Key Updated",
-          description: "Your OpenAI API key has been saved successfully and is ready to use.",
+          description: "Your OpenAI API key has been encrypted and saved successfully and is ready to use.",
           isError: false
         });
         setShowConfirmation(true);
@@ -197,7 +165,7 @@ const ApiKeySettings = () => {
       // Show error confirmation dialog
       setConfirmationMessage({
         title: "API Key Update Failed",
-        description: "There was an error saving your API key. Please try again later.",
+        description: "There was an error encrypting or saving your API key. Please try again later.",
         isError: true
       });
       setShowConfirmation(true);
@@ -223,7 +191,7 @@ const ApiKeySettings = () => {
             <DialogTitle>OpenAI API Key Settings</DialogTitle>
             <DialogDescription>
               Update your OpenAI API key for generating responses.
-              This key will be securely stored for all your chat sessions.
+              Your key will be encrypted and securely stored.
               {openaiKey && (
                 <p className="mt-2 text-sm text-green-600">
                   You currently have an API key set
@@ -258,9 +226,11 @@ const ApiKeySettings = () => {
               )}
               <p className="text-sm text-amber-600 mt-2">
                 <strong>Important:</strong> Your API key must start with 'sk-' and be at least 48 characters long.
+                We support both standard OpenAI keys and project-based keys (sk-proj-*).
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 You can get your API key from the <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">OpenAI dashboard</a>.
+                Your key will be encrypted before storage.
               </p>
             </div>
           </div>
@@ -270,7 +240,7 @@ const ApiKeySettings = () => {
               onClick={handleSaveApiKey} 
               disabled={isSubmitting || !newApiKey.trim() || !isKeyValid}
             >
-              {isSubmitting ? "Saving..." : "Save changes"}
+              {isSubmitting ? "Encrypting & Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

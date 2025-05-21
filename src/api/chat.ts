@@ -20,7 +20,7 @@ export const callChatApi = async (
     }
     
     if (!validateOpenAIKeyFormat(trimmedApiKey)) {
-      console.error("❌ Invalid API key format:", trimmedApiKey.substring(0, 5) + "...", "length:", trimmedApiKey.length);
+      console.error("❌ Invalid API key format:", trimmedApiKey.substring(0, 7) + "...", "length:", trimmedApiKey.length);
       throw new Error("Invalid API key format. OpenAI keys should start with 'sk-' and be at least 48 characters long.");
     }
     
@@ -39,7 +39,7 @@ export const callChatApi = async (
     // Log the detailed request payload
     console.log("📩 Sending to /api/chat:", {
       googleId,
-      apiKeyPrefix: trimmedApiKey.substring(0, 5) + "...",
+      apiKeyPrefix: trimmedApiKey.substring(0, 7) + "...",
       apiKeySuffix: "..." + trimmedApiKey.slice(-4),
       apiKeyLength: trimmedApiKey.length,
       messageCount: formattedMessages.length,
@@ -53,7 +53,7 @@ export const callChatApi = async (
       messages: formattedMessages,
       apiKey: trimmedApiKey,
       apiKeyMetadata: {
-        prefix: trimmedApiKey.substring(0, 5),
+        prefix: trimmedApiKey.substring(0, 7),
         suffix: trimmedApiKey.slice(-4),
         length: trimmedApiKey.length
       }

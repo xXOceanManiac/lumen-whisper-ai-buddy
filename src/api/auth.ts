@@ -1,5 +1,7 @@
+
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
+import CryptoJS from "crypto-js";
 
 interface User {
   googleId: string;
@@ -9,6 +11,45 @@ interface User {
 }
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
+// Encryption Secret - in production this should be an environment variable
+// For demo purposes we're hardcoding it here
+const ENCRYPTION_SECRET = "lumen-encryption-key-2025";
+
+// Helper function for encrypting API keys
+const encryptApiKey = (apiKey: string): { encryptedKey: string; iv: string } => {
+  try {
+    // Generate a random IV
+    const iv = CryptoJS.lib.WordArray.random(16).toString();
+    
+    // Encrypt the API key using AES
+    const encrypted = CryptoJS.AES.encrypt(apiKey, ENCRYPTION_SECRET, {
+      iv: CryptoJS.enc.Hex.parse(iv)
+    });
+    
+    return {
+      encryptedKey: encrypted.toString(),
+      iv: iv
+    };
+  } catch (error) {
+    console.error("❌ Error encrypting API key:", error);
+    throw new Error("Failed to encrypt API key");
+  }
+};
+
+// Helper function for decrypting API keys
+const decryptApiKey = (encryptedKey: string, iv: string): string => {
+  try {
+    // Decrypt the API key using AES
+    const decrypted = CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_SECRET, {
+      iv: CryptoJS.enc.Hex.parse(iv)
+    });
+    
+    return decrypted.toString(CryptoJS.enc.Utf8);
+  } catch (error) {
+    console.error("❌ Error decrypting API key:", error);
+    throw new Error("Failed to decrypt API key");
+  }
+};
 
 export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number; errorType?: string }> {
   try {
@@ -60,7 +101,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
     // Try fetching from Supabase first
     const { data: supabaseData, error: supabaseError } = await supabase
       .from('openai_keys')
-      .select('key_content')
+      .select('key_content, iv')
       .eq('google_id', googleId)
       .maybeSingle();
     
@@ -68,18 +109,24 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
       console.error(`❌ Supabase error fetching OpenAI key: ${supabaseError.message}`);
     }
     
-    if (supabaseData?.key_content) {
-      const key = supabaseData.key_content.trim();
-      
-      // Validate key format
-      if (!key.startsWith('sk-') || key.length < 48) {
-        console.error(`❌ Invalid API key format retrieved from Supabase: ${key.substring(0, 5)}...`);
+    if (supabaseData?.key_content && supabaseData?.iv) {
+      try {
+        // Decrypt the key using the IV
+        const decryptedKey = decryptApiKey(supabaseData.key_content, supabaseData.iv);
+        
+        // Validate key format
+        if (!validateOpenAIKey(decryptedKey)) {
+          console.error(`❌ Decrypted API key has invalid format`);
+          return null;
+        }
+        
+        console.log(`✅ Successfully retrieved and decrypted OpenAI key from Supabase`);
+        console.log(`Key format: starts with ${decryptedKey.substring(0, 7)}..., length: ${decryptedKey.length} chars`);
+        return decryptedKey;
+      } catch (err) {
+        console.error(`❌ Failed to decrypt API key:`, err);
         return null;
       }
-      
-      console.log(`✅ Successfully retrieved OpenAI key from Supabase (${key.length} chars)`);
-      console.log(`Key format: ${key.substring(0, 5)}...${key.slice(-4)}`);
-      return key;
     }
     
     // If not in Supabase, fall back to backend API
@@ -97,34 +144,33 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         const key = data.apiKey.trim();
         
         // Validate key format
-        if (!key.startsWith('sk-') || key.length < 48) {
-          console.error(`❌ Invalid API key format retrieved from API: ${key.substring(0, 5)}...`);
+        if (!validateOpenAIKey(key)) {
+          console.error(`❌ Invalid API key format retrieved from API`);
           return null;
         }
         
         console.log(`✅ Successfully retrieved OpenAI key from API (${key.length} chars)`);
-        console.log(`Key format: ${key.substring(0, 5)}...${key.slice(-4)}`);
+        console.log(`Key format: ${key.substring(0, 7)}...`);
         
-        // Store the key in Supabase for future use
+        // Encrypt and store the key in Supabase for future use
         try {
-          // Generate a simple IV for encryption purposes
-          const iv = generateSimpleIV();
+          const { encryptedKey, iv } = encryptApiKey(key);
           
           const { error } = await supabase
             .from('openai_keys')
             .upsert({ 
               google_id: googleId, 
-              key_content: key,
+              key_content: encryptedKey,
               iv: iv
             });
           
           if (error) {
-            console.error(`❌ Failed to save key to Supabase: ${error.message}`);
+            console.error(`❌ Failed to save encrypted key to Supabase: ${error.message}`);
           } else {
-            console.log(`✅ Successfully saved key to Supabase`);
+            console.log(`✅ Successfully saved encrypted key to Supabase`);
           }
         } catch (err) {
-          console.error(`❌ Error saving key to Supabase: ${err}`);
+          console.error(`❌ Error encrypting/saving key to Supabase: ${err}`);
         }
         
         return key;
@@ -149,7 +195,8 @@ export const validateOpenAIKey = (key: string): boolean => {
   
   if (!trimmedKey) return false;
   
-  // OpenAI keys must start with "sk-" and be at least 48 characters long
+  // OpenAI keys must start with "sk-" (including newer sk-proj-* keys) and be at least 48 characters long
+  // SK-Proj keys can be 164+ characters
   if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
     return false;
   }
@@ -168,28 +215,28 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
       return false;
     }
     
-    console.log(`Key format valid: starts with "sk-" = true, length = ${trimmedKey.length}`);
+    console.log(`Key format valid: starts with "${trimmedKey.substring(0, 7)}" and length = ${trimmedKey.length}`);
     
-    // Generate a simple IV for encryption purposes
-    const iv = generateSimpleIV();
+    // Encrypt the API key
+    const { encryptedKey, iv } = encryptApiKey(trimmedKey);
     
-    // Save to Supabase
+    // Save encrypted key to Supabase
     try {
       const { error } = await supabase
         .from('openai_keys')
         .upsert({ 
           google_id: googleId, 
-          key_content: trimmedKey,
+          key_content: encryptedKey,
           iv: iv
         });
       
       if (error) {
-        console.error(`❌ Failed to save key to Supabase: ${error.message}`);
+        console.error(`❌ Failed to save encrypted key to Supabase: ${error.message}`);
       } else {
-        console.log(`✅ Successfully saved key to Supabase`);
+        console.log(`✅ Successfully saved encrypted key to Supabase`);
       }
     } catch (err) {
-      console.error(`❌ Error saving key to Supabase: ${err}`);
+      console.error(`❌ Error saving encrypted key to Supabase: ${err}`);
     }
     
     // Also save to backend API as backup
@@ -219,18 +266,6 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     // Return true to allow for local storage fallback
     return true;
   }
-}
-
-// Helper function to generate a simple IV for encryption purposes
-function generateSimpleIV(): string {
-  // Generate a random string to use as IV
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const length = 16; // Standard IV length
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
 }
 
 export const googleLoginUrl = `${API_BASE_URL}/auth/google`;

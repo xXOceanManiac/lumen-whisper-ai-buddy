@@ -20,16 +20,16 @@ export const callOpenAIChat = async (
   try {
     console.log("🔄 Preparing OpenAI API call with", messages.length, "messages");
     
-    // Log a safe version of the key (first 5 chars and last 4)
+    // Log key info (length and prefix only for security)
     if (trimmedApiKey) {
       console.log("🔑 Using OpenAI API key:", 
-        trimmedApiKey.substring(0, 5) + "..." + trimmedApiKey.slice(-4), 
+        trimmedApiKey.substring(0, 7) + "...", 
         "length:", trimmedApiKey.length);
     }
     
     // Validate API key format
     if (!validateOpenAIKeyFormat(trimmedApiKey)) {
-      console.error("❌ Invalid API key format:", trimmedApiKey.slice(0, 5) + "...");
+      console.error("❌ Invalid API key format:", trimmedApiKey.slice(0, 7) + "...");
       return {
         success: false,
         error: 'Invalid API key format. OpenAI keys should start with "sk-" and be at least 48 characters long.'
@@ -41,26 +41,6 @@ export const callOpenAIChat = async (
       role: msg.role,
       content: msg.content
     }));
-
-    // Prepare request configuration for logging
-    const requestConfig = {
-      url: 'https://api.openai.com/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${trimmedApiKey.substring(0, 5)}...${trimmedApiKey.slice(-4)}` // Masked for logging
-      },
-      body: {
-        model: 'gpt-4o-mini',
-        messages: openAIMessages.map(msg => ({
-          role: msg.role,
-          content: msg.content.length > 50 ? msg.content.substring(0, 50) + "..." : msg.content
-        }))
-      }
-    };
-    
-    // Log request configuration (without full API key)
-    console.log("📤 OpenAI API request configuration:", JSON.stringify(requestConfig, null, 2));
 
     // Call OpenAI's API with the user's API key
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
