@@ -105,6 +105,17 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       const lastChar = result.charAt(result.length - 1);
       const firstChar = trimmedChunk.charAt(0);
       
+      // Check if this chunk might start a new paragraph (after sentence end)
+      const isNewParagraph = 
+        /[.!?]["']?\s*$/.test(result) && 
+        /[A-Z]/.test(firstChar) &&
+        trimmedChunk.length > 1;
+      
+      if (isNewParagraph && !result.endsWith("\n\n")) {
+        // Add paragraph break
+        return result + "\n\n" + trimmedChunk;
+      }
+      
       // Check if we need to add a space between words
       const needsSpace = 
         // Last char is a letter/number and next char is a letter/number
@@ -120,7 +131,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       if (needsToRemoveSpace) {
         // Remove trailing space before adding punctuation
         result = result.slice(0, -1);
-      } else if (needsSpace && !result.endsWith(' ')) {
+      } else if (needsSpace && !result.endsWith(' ') && !result.endsWith("\n")) {
         // Add a space between words when needed
         result += ' ';
       }
@@ -362,7 +373,9 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
               </div>
             </div>
             <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg max-w-[80%] animate-fade-in">
-              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">{streamingResponse}</p>
+              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words leading-relaxed">
+                {streamingResponse}
+              </p>
             </div>
           </div>
         )}

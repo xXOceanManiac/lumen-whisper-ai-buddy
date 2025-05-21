@@ -169,6 +169,17 @@ const Index = () => {
       const lastChar = result.charAt(result.length - 1);
       const firstChar = trimmedChunk.charAt(0);
       
+      // Check if this chunk might start a new paragraph (after sentence end)
+      const isNewParagraph = 
+        /[.!?]["']?\s*$/.test(result) && 
+        /[A-Z]/.test(firstChar) &&
+        trimmedChunk.length > 1;
+      
+      if (isNewParagraph && !result.endsWith("\n\n")) {
+        // Add paragraph break
+        return result + "\n\n" + trimmedChunk;
+      }
+      
       // Check if we need to add a space between words
       const needsSpace = 
         // Last char is a letter/number and next char is a letter/number
@@ -184,7 +195,7 @@ const Index = () => {
       if (needsToRemoveSpace) {
         // Remove trailing space before adding punctuation
         result = result.slice(0, -1);
-      } else if (needsSpace && !result.endsWith(' ')) {
+      } else if (needsSpace && !result.endsWith(' ') && !result.endsWith("\n")) {
         // Add a space between words when needed
         result += ' ';
       }
@@ -447,7 +458,9 @@ const Index = () => {
           {/* Streaming response with improved styling */}
           {streamingResponse && (
             <div className="bubble-assistant animate-fade-in">
-              <div className="text-sm whitespace-pre-wrap break-words">{streamingResponse}</div>
+              <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                {streamingResponse}
+              </div>
             </div>
           )}
           
