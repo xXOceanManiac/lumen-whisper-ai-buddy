@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
 import CryptoJS from "crypto-js";
