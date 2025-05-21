@@ -1,6 +1,5 @@
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
-import CryptoJS from "crypto-js";
 
 interface User {
   googleId: string;
@@ -10,44 +9,20 @@ interface User {
 }
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
-// Encryption Secret - in production this should be an environment variable
-// For demo purposes we're hardcoding it here
-const ENCRYPTION_SECRET = "lumen-encryption-key-2025";
 
-// Helper function for encrypting API keys
-const encryptApiKey = (apiKey: string): { encryptedKey: string; iv: string } => {
-  try {
-    // Generate a random IV
-    const iv = CryptoJS.lib.WordArray.random(16).toString();
-    
-    // Encrypt the API key using AES
-    const encrypted = CryptoJS.AES.encrypt(apiKey, ENCRYPTION_SECRET, {
-      iv: CryptoJS.enc.Hex.parse(iv)
-    });
-    
-    return {
-      encryptedKey: encrypted.toString(),
-      iv: iv
-    };
-  } catch (error) {
-    console.error("❌ Error encrypting API key:", error);
-    throw new Error("Failed to encrypt API key");
+// Helper function to validate OpenAI API key format
+export const validateOpenAIKey = (key: string): boolean => {
+  const trimmedKey = key ? key.trim() : '';
+  
+  if (!trimmedKey) return false;
+  
+  // OpenAI keys must start with "sk-" (including newer sk-proj-* keys) and be at least 48 characters long
+  // SK-Proj keys can be 164+ characters
+  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
+    return false;
   }
-};
-
-// Helper function for decrypting API keys
-const decryptApiKey = (encryptedKey: string, iv: string): string => {
-  try {
-    // Decrypt the API key using AES
-    const decrypted = CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_SECRET, {
-      iv: CryptoJS.enc.Hex.parse(iv)
-    });
-    
-    return decrypted.toString(CryptoJS.enc.Utf8);
-  } catch (error) {
-    console.error("❌ Error decrypting API key:", error);
-    throw new Error("Failed to decrypt API key");
-  }
+  
+  return true;
 };
 
 export async function checkAuth(): Promise<{ authenticated: boolean; user?: User; statusCode?: number; errorType?: string }> {
@@ -110,18 +85,37 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
     
     if (supabaseData?.key_content && supabaseData?.iv) {
       try {
-        // Decrypt the key using the IV
-        const decryptedKey = decryptApiKey(supabaseData.key_content, supabaseData.iv);
+        // Request the decrypted key from the server instead of decrypting it client-side
+        const response = await fetch(`${API_BASE_URL}/api/decrypt-key`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            encryptedKey: supabaseData.key_content,
+            iv: supabaseData.iv,
+            googleId
+          })
+        });
         
-        // Validate key format
-        if (!validateOpenAIKey(decryptedKey)) {
-          console.error(`❌ Decrypted API key has invalid format`);
+        if (response.ok) {
+          const data = await response.json();
+          const decryptedKey = data.apiKey;
+          
+          // Validate key format
+          if (!validateOpenAIKey(decryptedKey)) {
+            console.error(`❌ Decrypted API key has invalid format`);
+            return null;
+          }
+          
+          console.log(`✅ Successfully retrieved and decrypted OpenAI key from server`);
+          console.log(`Key format: starts with ${decryptedKey.substring(0, 7)}..., length: ${decryptedKey.length} chars`);
+          return decryptedKey;
+        } else {
+          console.error(`❌ Failed to decrypt API key via server: ${response.status}`);
           return null;
         }
-        
-        console.log(`✅ Successfully retrieved and decrypted OpenAI key from Supabase`);
-        console.log(`Key format: starts with ${decryptedKey.substring(0, 7)}..., length: ${decryptedKey.length} chars`);
-        return decryptedKey;
       } catch (err) {
         console.error(`❌ Failed to decrypt API key:`, err);
         return null;
@@ -151,25 +145,24 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         console.log(`✅ Successfully retrieved OpenAI key from API (${key.length} chars)`);
         console.log(`Key format: ${key.substring(0, 7)}...`);
         
-        // Encrypt and store the key in Supabase for future use
+        // Save the key to Supabase through the server endpoint
         try {
-          const { encryptedKey, iv } = encryptApiKey(key);
+          const saveResponse = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ googleId, openaiApiKey: key })
+          });
           
-          const { error } = await supabase
-            .from('openai_keys')
-            .upsert({ 
-              google_id: googleId, 
-              key_content: encryptedKey,
-              iv: iv
-            });
-          
-          if (error) {
-            console.error(`❌ Failed to save encrypted key to Supabase: ${error.message}`);
+          if (!saveResponse.ok) {
+            console.error(`❌ Failed to save key to Supabase via server: ${saveResponse.status}`);
           } else {
-            console.log(`✅ Successfully saved encrypted key to Supabase`);
+            console.log(`✅ Successfully saved encrypted key to Supabase via server`);
           }
         } catch (err) {
-          console.error(`❌ Error encrypting/saving key to Supabase: ${err}`);
+          console.error(`❌ Error saving key to Supabase via server: ${err}`);
         }
         
         return key;
@@ -188,21 +181,6 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
   }
 }
 
-// Helper function to validate OpenAI API key format
-export const validateOpenAIKey = (key: string): boolean => {
-  const trimmedKey = key ? key.trim() : '';
-  
-  if (!trimmedKey) return false;
-  
-  // OpenAI keys must start with "sk-" (including newer sk-proj-* keys) and be at least 48 characters long
-  // SK-Proj keys can be 164+ characters
-  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
-    return false;
-  }
-  
-  return true;
-};
-
 export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<boolean> {
   try {
     console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
@@ -216,29 +194,7 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     
     console.log(`Key format valid: starts with "${trimmedKey.substring(0, 7)}" and length = ${trimmedKey.length}`);
     
-    // Encrypt the API key
-    const { encryptedKey, iv } = encryptApiKey(trimmedKey);
-    
-    // Save encrypted key to Supabase
-    try {
-      const { error } = await supabase
-        .from('openai_keys')
-        .upsert({ 
-          google_id: googleId, 
-          key_content: encryptedKey,
-          iv: iv
-        });
-      
-      if (error) {
-        console.error(`❌ Failed to save encrypted key to Supabase: ${error.message}`);
-      } else {
-        console.log(`✅ Successfully saved encrypted key to Supabase`);
-      }
-    } catch (err) {
-      console.error(`❌ Error saving encrypted key to Supabase: ${err}`);
-    }
-    
-    // Also save to backend API as backup
+    // Save to backend API which will handle encryption and storage
     const response = await fetch(`${API_BASE_URL}/api/save-openai-key`, {
       method: 'POST',
       credentials: 'include', // Required to include session cookie
@@ -257,13 +213,11 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     } else {
       const errorText = await response.text();
       console.error(`❌ Failed to save OpenAI key to API: ${response.status}. Error: ${errorText}`);
-      // We still return true if Supabase save was successful
-      return true;
+      return false;
     }
   } catch (error) {
     console.error("❌ Error saving OpenAI API key:", error);
-    // Return true to allow for local storage fallback
-    return true;
+    return false;
   }
 }
 
