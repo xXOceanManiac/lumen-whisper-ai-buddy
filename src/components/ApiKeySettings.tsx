@@ -40,6 +40,18 @@ const ApiKeySettings = () => {
   const { toast } = useToast();
   const { user, openaiKey, setOpenaiKey, refreshOpenAIKey } = useAuth();
 
+  // Helper function to validate OpenAI API key format
+  const validateApiKey = (key: string): boolean => {
+    const trimmedKey = key.trim();
+    if (!trimmedKey) return false;
+    
+    // OpenAI keys must start with "sk-" and be at least 30 characters long
+    if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+      return false;
+    }
+    return true;
+  };
+
   // Helper function to generate a simple IV for encryption purposes
   const generateSimpleIV = (): string => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -52,10 +64,21 @@ const ApiKeySettings = () => {
   };
 
   const handleSaveApiKey = async () => {
-    if (!newApiKey.trim() || !user?.googleId) {
+    if (!user?.googleId) {
       toast({
         title: "Error",
-        description: "Please enter a valid API key",
+        description: "Authentication required. Please log in again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate API key format
+    const trimmedKey = newApiKey.trim();
+    if (!validateApiKey(trimmedKey)) {
+      toast({
+        title: "Invalid API Key Format",
+        description: "Your API key must start with 'sk-' and be at least 30 characters long. Please check your key and try again.",
         variant: "destructive",
       });
       return;
@@ -64,18 +87,6 @@ const ApiKeySettings = () => {
     setIsSubmitting(true);
     
     try {
-      // Trim key and validate format
-      const trimmedKey = newApiKey.trim();
-      if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
-        toast({
-          title: "Invalid API Key",
-          description: "API key should start with sk- and be at least 30 characters long",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      
       console.log("Saving new OpenAI API key for googleId:", user.googleId);
       console.log("Key format:", trimmedKey.substring(0, 5) + "..." + trimmedKey.slice(-4), "length:", trimmedKey.length);
       
@@ -202,6 +213,14 @@ const ApiKeySettings = () => {
                 onChange={(e) => setNewApiKey(e.target.value)}
                 className="col-span-3"
               />
+            </div>
+            <div className="col-span-4 px-2">
+              <p className="text-sm text-amber-600">
+                <strong>Important:</strong> Your API key must start with 'sk-' and be at least 30 characters long.
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                You can get your API key from the <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">OpenAI dashboard</a>.
+              </p>
             </div>
           </div>
           <DialogFooter>

@@ -1,5 +1,6 @@
 
 import { Message } from '@/types';
+import { validateOpenAIKeyFormat } from './localStorage';
 
 export const callOpenAIChat = async (
   messages: Message[],
@@ -27,7 +28,7 @@ export const callOpenAIChat = async (
     }
     
     // Validate API key format
-    if (!trimmedApiKey.startsWith('sk-') || trimmedApiKey.length < 30) {
+    if (!validateOpenAIKeyFormat(trimmedApiKey)) {
       console.error("❌ Invalid API key format:", trimmedApiKey.slice(0, 5) + "...");
       return {
         success: false,

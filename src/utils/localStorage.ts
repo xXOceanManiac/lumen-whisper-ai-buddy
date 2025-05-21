@@ -1,3 +1,4 @@
+
 import { Settings, ChatHistory } from '../types';
 
 const SETTINGS_KEY = 'lumen-settings';
@@ -24,11 +25,25 @@ export const getSettings = (): Settings => {
   return settings ? JSON.parse(settings) : defaultSettings;
 };
 
+// Helper function to validate OpenAI API key format
+export const validateOpenAIKeyFormat = (key: string): boolean => {
+  const trimmedKey = key ? key.trim() : '';
+  
+  if (!trimmedKey) return false;
+  
+  // OpenAI keys must start with "sk-" and be at least 30 characters long
+  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+    return false;
+  }
+  
+  return true;
+};
+
 // OpenAI API key storage (separate from settings for better security)
 export const saveOpenAIKey = (key: string): void => {
   // Properly validate the key format
   const trimmedKey = key.trim();
-  if (!trimmedKey || !trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+  if (!validateOpenAIKeyFormat(trimmedKey)) {
     console.error("Invalid OpenAI API key format. Key must start with 'sk-' and be at least 30 characters");
     return;
   }
@@ -42,7 +57,7 @@ export const getOpenAIKey = (): string | null => {
   const key = localStorage.getItem(OPENAI_KEY_STORAGE_KEY);
   if (key) {
     // Validate key format
-    if (!key.startsWith('sk-') || key.length < 30) {
+    if (!validateOpenAIKeyFormat(key)) {
       console.error("Retrieved invalid OpenAI API key format from localStorage");
       return null;
     }

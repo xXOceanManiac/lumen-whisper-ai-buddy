@@ -6,7 +6,7 @@ import { saveOpenAIKey } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { Loader, ArrowRight, Key } from "lucide-react";
+import { Loader, ArrowRight, Key, AlertTriangle } from "lucide-react";
 
 type Step = 'welcome' | 'apiKey' | 'success';
 
@@ -14,6 +14,7 @@ const OnboardingView = () => {
   const [currentStep, setCurrentStep] = useState<Step>('welcome');
   const [apiKey, setApiKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
   const { user, setOpenaiKey, setHasCompletedOnboarding } = useAuth();
   const { toast } = useToast();
 
@@ -23,15 +24,55 @@ const OnboardingView = () => {
     }
   };
 
+  // Helper function to validate OpenAI API key format
+  const validateApiKey = (key: string): boolean => {
+    const trimmedKey = key.trim();
+    if (!trimmedKey) {
+      setKeyError("API key is required");
+      return false;
+    }
+    
+    // OpenAI keys must start with "sk-" and be at least 30 characters long
+    if (!trimmedKey.startsWith('sk-')) {
+      setKeyError("API key must start with 'sk-'");
+      return false;
+    }
+    
+    if (trimmedKey.length < 30) {
+      setKeyError("API key must be at least 30 characters long");
+      return false;
+    }
+    
+    setKeyError(null);
+    return true;
+  };
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setApiKey(value);
+    
+    // Clear error when user is typing
+    if (keyError) {
+      setKeyError(null);
+    }
+  };
+
   const handleSubmitApiKey = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!apiKey.trim() || !user?.googleId) {
+    if (!user?.googleId) {
       toast({
         title: "Error",
-        description: "Please enter a valid API key.",
+        description: "Authentication required. Please log in again.",
         variant: "destructive",
       });
+      return;
+    }
+    
+    // Validate API key format before submission
+    const trimmedKey = apiKey.trim();
+    if (!validateApiKey(trimmedKey)) {
+      // Error message is already set in validateApiKey
       return;
     }
     
@@ -144,17 +185,29 @@ const OnboardingView = () => {
                   type="password"
                   placeholder="sk-..."
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  onChange={handleApiKeyChange}
+                  className={`bg-gray-800 border-gray-700 text-white ${keyError ? 'border-red-500' : ''}`}
                   disabled={isSubmitting}
                 />
-                <p className="text-xs text-gray-400">
+                {keyError && (
+                  <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                    <AlertTriangle size={16} />
+                    <span>{keyError}</span>
+                  </div>
+                )}
+                <div className="mt-2 p-3 bg-amber-900/20 border border-amber-900/30 rounded-md">
+                  <p className="text-sm text-amber-300 flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    <span>Your API key must start with 'sk-' and be at least 30 characters long.</span>
+                  </p>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
                   Your API key is stored securely and never shared.
                 </p>
               </div>
               
               <Button
-                type="submit"
+                type="submit" 
                 className="w-full"
                 disabled={isSubmitting || !apiKey.trim()}
               >

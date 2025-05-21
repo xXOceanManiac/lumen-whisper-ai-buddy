@@ -1,5 +1,6 @@
 
 import { Message } from "@/types";
+import { validateOpenAIKeyFormat } from "@/utils/localStorage";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
@@ -18,9 +19,9 @@ export const callChatApi = async (
       throw new Error("A valid OpenAI API key is required");
     }
     
-    if (!trimmedApiKey.startsWith('sk-') || trimmedApiKey.length < 30) {
+    if (!validateOpenAIKeyFormat(trimmedApiKey)) {
       console.error("❌ Invalid API key format:", trimmedApiKey.substring(0, 5) + "...", "length:", trimmedApiKey.length);
-      throw new Error("Invalid API key format. OpenAI keys should start with 'sk-'");
+      throw new Error("Invalid API key format. OpenAI keys should start with 'sk-' and be at least 30 characters long.");
     }
     
     // Format messages for the API

@@ -1,7 +1,8 @@
+
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { checkAuth, getOpenAIKey } from "@/api/auth";
+import { checkAuth, getOpenAIKey, validateOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
-import { saveOpenAIKey as saveOpenAIKeyToStorage, getOpenAIKey as getOpenAIKeyFromStorage } from "@/utils/localStorage";
+import { saveOpenAIKey as saveOpenAIKeyToStorage, getOpenAIKey as getOpenAIKeyFromStorage, validateOpenAIKeyFormat } from "@/utils/localStorage";
 
 interface User {
   googleId: string;
@@ -77,7 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleSetOpenaiKey = (key: string) => {
     const trimmedKey = key ? key.trim() : '';
     
-    if (!trimmedKey || !trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+    if (!validateOpenAIKeyFormat(trimmedKey)) {
       console.error("Invalid OpenAI API key format:", trimmedKey ? trimmedKey.substring(0, 5) + "..." : "null/empty");
       toast({
         title: "Invalid API Key",
@@ -100,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Fetching OpenAI API key for googleId:", userId);
       const apiKey = await getOpenAIKey(userId);
       
-      if (apiKey && apiKey.startsWith('sk-') && apiKey.length >= 30) {
+      if (apiKey && validateOpenAIKeyFormat(apiKey)) {
         console.log(`✅ OpenAI key fetched: ${apiKey.substring(0, 5)}... (${apiKey.length} chars)`);
         setOpenaiKey(apiKey);
         saveOpenAIKeyToStorage(apiKey);

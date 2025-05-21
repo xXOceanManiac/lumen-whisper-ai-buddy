@@ -1,3 +1,4 @@
+
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
 
@@ -143,14 +144,28 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
   }
 }
 
+// Helper function to validate OpenAI API key format
+export const validateOpenAIKey = (key: string): boolean => {
+  const trimmedKey = key ? key.trim() : '';
+  
+  if (!trimmedKey) return false;
+  
+  // OpenAI keys must start with "sk-" and be at least 30 characters long
+  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+    return false;
+  }
+  
+  return true;
+};
+
 export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<boolean> {
   try {
     console.log(`🔄 Saving OpenAI key for googleId: ${googleId.substring(0, 5)}...`);
     
     // Validate and trim the API key
     const trimmedKey = apiKey.trim();
-    if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
-      console.error("❌ Invalid API key format:", trimmedKey.slice(0, 5) + "...");
+    if (!validateOpenAIKey(trimmedKey)) {
+      console.error("❌ Invalid API key format. Key must start with 'sk-' and be at least 30 characters long.");
       return false;
     }
     
