@@ -1,4 +1,3 @@
-
 // Authentication API utilities
 import { supabase } from "@/integrations/supabase/client";
 
@@ -73,7 +72,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
       const key = supabaseData.key_content.trim();
       
       // Validate key format
-      if (!key.startsWith('sk-') || key.length < 30) {
+      if (!key.startsWith('sk-') || key.length < 48) {
         console.error(`❌ Invalid API key format retrieved from Supabase: ${key.substring(0, 5)}...`);
         return null;
       }
@@ -98,7 +97,7 @@ export async function getOpenAIKey(googleId: string): Promise<string | null> {
         const key = data.apiKey.trim();
         
         // Validate key format
-        if (!key.startsWith('sk-') || key.length < 30) {
+        if (!key.startsWith('sk-') || key.length < 48) {
           console.error(`❌ Invalid API key format retrieved from API: ${key.substring(0, 5)}...`);
           return null;
         }
@@ -150,8 +149,8 @@ export const validateOpenAIKey = (key: string): boolean => {
   
   if (!trimmedKey) return false;
   
-  // OpenAI keys must start with "sk-" and be at least 30 characters long
-  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+  // OpenAI keys must start with "sk-" and be at least 48 characters long
+  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
     return false;
   }
   
@@ -165,7 +164,7 @@ export async function saveOpenAIKey(googleId: string, apiKey: string): Promise<b
     // Validate and trim the API key
     const trimmedKey = apiKey.trim();
     if (!validateOpenAIKey(trimmedKey)) {
-      console.error("❌ Invalid API key format. Key must start with 'sk-' and be at least 30 characters long.");
+      console.error("❌ Invalid API key format. Key must start with 'sk-' and be at least 48 characters long.");
       return false;
     }
     

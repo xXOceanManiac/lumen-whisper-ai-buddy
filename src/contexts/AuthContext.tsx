@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { checkAuth, getOpenAIKey, validateOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -79,10 +78,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const trimmedKey = key ? key.trim() : '';
     
     if (!validateOpenAIKeyFormat(trimmedKey)) {
-      console.error("Invalid OpenAI API key format:", trimmedKey ? trimmedKey.substring(0, 5) + "..." : "null/empty");
+      console.error("❌ Invalid OpenAI API key format:", trimmedKey ? trimmedKey.substring(0, 5) + "..." : "null/empty");
       toast({
         title: "Invalid API Key",
-        description: "API key should start with sk- and be at least 30 characters",
+        description: "API key should start with sk- and be at least 48 characters long",
         variant: "destructive",
       });
       return;
@@ -93,12 +92,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setOpenaiKey(trimmedKey);
     saveOpenAIKeyToStorage(trimmedKey);
     setHasCompletedOnboarding(true);
+    
+    // If we have a user, also save the key to Supabase
+    if (user?.googleId) {
+      saveKeyToServer(user.googleId, trimmedKey);
+    } else {
+      console.warn("⚠️ No user found when setting API key; key saved locally only");
+    }
+  };
+  
+  // Helper function to save key to server
+  const saveKeyToServer = async (googleId: string, key: string): Promise<void> => {
+    try {
+      const success = await import('@/api/auth').then(module => module.saveOpenAIKey(googleId, key));
+      if (success) {
+        console.log("✅ API key successfully saved to server");
+      } else {
+        console.error("❌ Failed to save API key to server");
+      }
+    } catch (error) {
+      console.error("❌ Error saving API key to server:", error);
+    }
   };
 
   // Function to fetch OpenAI API key
   const fetchOpenAIKey = async (userId: string): Promise<boolean> => {
     try {
-      console.log("Fetching OpenAI API key for googleId:", userId);
+      console.log("🔄 Fetching OpenAI API key for googleId:", userId);
       const apiKey = await getOpenAIKey(userId);
       
       if (apiKey && validateOpenAIKeyFormat(apiKey)) {
@@ -114,7 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (error) {
-      console.error("Error fetching OpenAI API key:", error);
+      console.error("❌ Error fetching OpenAI API key:", error);
       return false;
     }
   };
@@ -124,7 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user?.googleId) return false;
     
     try {
-      console.log("Refreshing OpenAI API key for googleId:", user.googleId);
+      console.log("🔄 Refreshing OpenAI API key for googleId:", user.googleId);
       const success = await fetchOpenAIKey(user.googleId);
       
       if (success) {
@@ -139,7 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (error) {
-      console.error("Error refreshing OpenAI API key:", error);
+      console.error("❌ Error refreshing OpenAI API key:", error);
       return false;
     }
   };
@@ -192,7 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (savedApiKey) {
             setOpenaiKey(savedApiKey);
             setHasCompletedOnboarding(true);
-            console.log("Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
+            console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
           }
           
           // Fetch fresh OpenAI API key
@@ -208,7 +228,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (savedApiKey) {
             setOpenaiKey(savedApiKey);
             setHasCompletedOnboarding(true);
-            console.log("Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
+            console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
           }
           
           // Try to fetch API key using the saved user ID

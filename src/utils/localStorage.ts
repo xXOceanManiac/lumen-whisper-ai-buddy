@@ -31,8 +31,9 @@ export const validateOpenAIKeyFormat = (key: string): boolean => {
   
   if (!trimmedKey) return false;
   
-  // OpenAI keys must start with "sk-" and be at least 30 characters long
-  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+  // OpenAI keys must start with "sk-" and be at least 48 characters long
+  if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
+    console.error(`❌ Invalid API key format. Key must start with 'sk-' and be at least 48 characters (found ${trimmedKey.length} chars)`);
     return false;
   }
   
@@ -44,13 +45,13 @@ export const saveOpenAIKey = (key: string): void => {
   // Properly validate the key format
   const trimmedKey = key.trim();
   if (!validateOpenAIKeyFormat(trimmedKey)) {
-    console.error("Invalid OpenAI API key format. Key must start with 'sk-' and be at least 30 characters");
+    console.error("❌ Invalid OpenAI API key format. Key must start with 'sk-' and be at least 48 characters");
     return;
   }
   
   // Store the full, unmodified key
   localStorage.setItem(OPENAI_KEY_STORAGE_KEY, trimmedKey);
-  console.log(`Saved full OpenAI API key to localStorage (${trimmedKey.length} chars, starts with ${trimmedKey.substring(0, 5)})`);
+  console.log(`✅ Saved full OpenAI API key to localStorage (${trimmedKey.length} chars, starts with ${trimmedKey.substring(0, 5)})`);
 };
 
 export const getOpenAIKey = (): string | null => {
@@ -58,10 +59,10 @@ export const getOpenAIKey = (): string | null => {
   if (key) {
     // Validate key format
     if (!validateOpenAIKeyFormat(key)) {
-      console.error("Retrieved invalid OpenAI API key format from localStorage");
+      console.error("❌ Retrieved invalid OpenAI API key format from localStorage");
       return null;
     }
-    console.log(`Retrieved full OpenAI API key from localStorage (${key.length} chars, starts with ${key.substring(0, 5)})`);
+    console.log(`✅ Retrieved full OpenAI API key from localStorage (${key.length} chars, starts with ${key.substring(0, 5)})`);
     return key;
   }
   return null;

@@ -32,7 +32,7 @@ export const callOpenAIChat = async (
       console.error("❌ Invalid API key format:", trimmedApiKey.slice(0, 5) + "...");
       return {
         success: false,
-        error: 'Invalid API key format. OpenAI keys should start with "sk-" and be at least 30 characters long.'
+        error: 'Invalid API key format. OpenAI keys should start with "sk-" and be at least 48 characters long.'
       };
     }
     

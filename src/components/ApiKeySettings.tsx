@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,16 +37,47 @@ const ApiKeySettings = () => {
     description: "Your OpenAI API key has been saved and will be used for all your chat sessions.",
     isError: false
   });
+  const [isKeyValid, setIsKeyValid] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
   const { toast } = useToast();
   const { user, openaiKey, setOpenaiKey, refreshOpenAIKey } = useAuth();
+
+  // Set initial API key value when dialog opens
+  useEffect(() => {
+    if (open && openaiKey) {
+      setNewApiKey(openaiKey);
+      setIsKeyValid(validateApiKey(openaiKey));
+    }
+  }, [open, openaiKey]);
+
+  // Live validation as user types
+  useEffect(() => {
+    if (newApiKey) {
+      const isValid = validateApiKey(newApiKey);
+      setIsKeyValid(isValid);
+      
+      if (newApiKey.trim() === "") {
+        setValidationMessage("");
+      } else if (!newApiKey.startsWith('sk-')) {
+        setValidationMessage("API key must start with 'sk-'");
+      } else if (newApiKey.length < 48) {
+        setValidationMessage(`API key too short (${newApiKey.length}/48 characters)`);
+      } else {
+        setValidationMessage("Valid API key format ✓");
+      }
+    } else {
+      setIsKeyValid(false);
+      setValidationMessage("");
+    }
+  }, [newApiKey]);
 
   // Helper function to validate OpenAI API key format
   const validateApiKey = (key: string): boolean => {
     const trimmedKey = key.trim();
     if (!trimmedKey) return false;
     
-    // OpenAI keys must start with "sk-" and be at least 30 characters long
-    if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 30) {
+    // OpenAI keys must start with "sk-" and be at least 48 characters long
+    if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 48) {
       return false;
     }
     return true;
@@ -78,7 +109,7 @@ const ApiKeySettings = () => {
     if (!validateApiKey(trimmedKey)) {
       toast({
         title: "Invalid API Key Format",
-        description: "Your API key must start with 'sk-' and be at least 30 characters long. Please check your key and try again.",
+        description: "Your API key must start with 'sk-' and be at least 48 characters long. Please check your key and try again.",
         variant: "destructive",
       });
       return;
@@ -87,7 +118,7 @@ const ApiKeySettings = () => {
     setIsSubmitting(true);
     
     try {
-      console.log("Saving new OpenAI API key for googleId:", user.googleId);
+      console.log("🔄 Saving new OpenAI API key for googleId:", user.googleId);
       console.log("Key format:", trimmedKey.substring(0, 5) + "..." + trimmedKey.slice(-4), "length:", trimmedKey.length);
       
       // First attempt to save in Supabase directly
@@ -156,7 +187,7 @@ const ApiKeySettings = () => {
         setShowConfirmation(true);
       }
     } catch (error) {
-      console.error("Error saving OpenAI API key:", error);
+      console.error("❌ Error saving OpenAI API key:", error);
       toast({
         title: "Error",
         description: "An unexpected error occurred while saving your API key",
@@ -211,12 +242,22 @@ const ApiKeySettings = () => {
                 placeholder="sk-..."
                 value={newApiKey}
                 onChange={(e) => setNewApiKey(e.target.value)}
-                className="col-span-3"
+                className={`col-span-3 ${
+                  newApiKey && !isKeyValid ? "border-red-500" : ""
+                }`}
+                disabled={isSubmitting}
               />
             </div>
             <div className="col-span-4 px-2">
-              <p className="text-sm text-amber-600">
-                <strong>Important:</strong> Your API key must start with 'sk-' and be at least 30 characters long.
+              {validationMessage && (
+                <p className={`text-sm ${
+                  isKeyValid ? "text-green-600" : "text-amber-600"
+                }`}>
+                  {validationMessage}
+                </p>
+              )}
+              <p className="text-sm text-amber-600 mt-2">
+                <strong>Important:</strong> Your API key must start with 'sk-' and be at least 48 characters long.
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 You can get your API key from the <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">OpenAI dashboard</a>.
@@ -227,7 +268,7 @@ const ApiKeySettings = () => {
             <Button 
               type="submit" 
               onClick={handleSaveApiKey} 
-              disabled={isSubmitting || !newApiKey.trim()}
+              disabled={isSubmitting || !newApiKey.trim() || !isKeyValid}
             >
               {isSubmitting ? "Saving..." : "Save changes"}
             </Button>
