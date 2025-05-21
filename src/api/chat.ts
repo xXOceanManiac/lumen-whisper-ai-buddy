@@ -56,7 +56,8 @@ export const callChatApi = async (
         prefix: trimmedApiKey.substring(0, 7),
         suffix: trimmedApiKey.slice(-4),
         length: trimmedApiKey.length
-      }
+      },
+      stream: true // Add streaming option
     };
 
     console.log(`🔄 API request to ${API_BASE_URL}/api/chat initiated`);
@@ -78,42 +79,91 @@ export const callChatApi = async (
       throw new Error(`Failed to get chat response: ${response.status} ${errorText}`);
     }
 
-    console.log("✅ API response received successfully");
-    const data = await response.json();
-    console.log("Chat API response:", data);
+    console.log("✅ API response stream received");
     
-    // Updated: Extract the assistant message directly from data.content
-    const assistantMessage = data?.content;
-    
-    if (!assistantMessage) {
-      console.error("❌ No assistant message found in API response", data);
-      throw new Error("Invalid response format from chat API");
-    }
-    
-    // Parse the response for calendar events
-    let calendarEvent;
-    try {
-      if (assistantMessage.includes('"type":"calendar"') || assistantMessage.includes('"type": "calendar"')) {
-        // Extract JSON object from the response
-        const match = assistantMessage.match(/\{[\s\S]*?\}/);
-        if (match) {
-          const jsonStr = match[0];
-          const parsedEvent = JSON.parse(jsonStr);
-          if (parsedEvent.type === 'calendar') {
-            calendarEvent = parsedEvent;
-            console.log("📅 Calendar event detected:", parsedEvent.title);
+    // Handle streaming response
+    if (onChunk) {
+      // Process the streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let completeContent = '';
+      
+      if (reader) {
+        // Start reading the stream
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          // Decode the chunk and send to callback
+          const chunk = decoder.decode(value, { stream: true });
+          completeContent += chunk;
+          onChunk(chunk);
+        }
+        
+        // Parse the complete content for calendar events
+        let calendarEvent;
+        try {
+          if (completeContent.includes('"type":"calendar"') || completeContent.includes('"type": "calendar"')) {
+            // Extract JSON object from the response
+            const match = completeContent.match(/\{[\s\S]*?\}/);
+            if (match) {
+              const jsonStr = match[0];
+              const parsedEvent = JSON.parse(jsonStr);
+              if (parsedEvent.type === 'calendar') {
+                calendarEvent = parsedEvent;
+                console.log("📅 Calendar event detected:", parsedEvent.title);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing calendar event:", error);
+          // Continue without calendar event if parsing fails
+        }
+        
+        return { content: completeContent, calendarEvent };
+      } else {
+        console.error("❌ Response body is not readable");
+        throw new Error("Response body is not readable");
+      }
+    } else {
+      // Non-streaming fallback
+      console.log("⚠️ No streaming handler provided, falling back to regular response");
+      const data = await response.json();
+      console.log("Chat API response:", data);
+      
+      // Extract the assistant message directly from data.content
+      const assistantMessage = data?.content;
+      
+      if (!assistantMessage) {
+        console.error("❌ No assistant message found in API response", data);
+        throw new Error("Invalid response format from chat API");
+      }
+      
+      // Parse the response for calendar events
+      let calendarEvent;
+      try {
+        if (assistantMessage.includes('"type":"calendar"') || assistantMessage.includes('"type": "calendar"')) {
+          // Extract JSON object from the response
+          const match = assistantMessage.match(/\{[\s\S]*?\}/);
+          if (match) {
+            const jsonStr = match[0];
+            const parsedEvent = JSON.parse(jsonStr);
+            if (parsedEvent.type === 'calendar') {
+              calendarEvent = parsedEvent;
+              console.log("📅 Calendar event detected:", parsedEvent.title);
+            }
           }
         }
+      } catch (error) {
+        console.error("Error parsing calendar event:", error);
+        // Continue without calendar event if parsing fails
       }
-    } catch (error) {
-      console.error("Error parsing calendar event:", error);
-      // Continue without calendar event if parsing fails
-    }
 
-    return { 
-      content: assistantMessage,
-      calendarEvent 
-    };
+      return { 
+        content: assistantMessage,
+        calendarEvent 
+      };
+    }
   } catch (error) {
     console.error("❌ Error calling chat API:", error);
     throw error;

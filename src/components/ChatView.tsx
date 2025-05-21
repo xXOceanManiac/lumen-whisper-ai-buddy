@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -25,6 +26,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRefreshingKey, setIsRefreshingKey] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState("");
   
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingResponse]);
   
   const handleLogout = () => {
     navigate('/logout');
@@ -112,6 +114,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsProcessing(true);
+    setStreamingResponse(""); // Clear any previous streaming content
     
     try {
       // Check if we have OpenAI API key
@@ -192,11 +195,23 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         }))
       });
       
-      // Call backend Chat API with googleId
-      console.log("🔄 Calling chat API...");
+      // Call backend Chat API with googleId and streaming support
+      console.log("🔄 Calling chat API with streaming...");
       try {
-        const response = await callChatApi([...messages, userMessage], openaiKey, googleId);
-        console.log("✅ Chat API response received");
+        const response = await callChatApi(
+          [...messages, userMessage], 
+          openaiKey, 
+          googleId,
+          (chunk) => {
+            // Update streaming response as chunks arrive
+            setStreamingResponse(prev => prev + chunk);
+          }
+        );
+        
+        console.log("✅ Chat API streaming response completed");
+        
+        // Clear streaming response once complete
+        setStreamingResponse("");
         
         if (!response || !response.content) {
           console.error("❌ Invalid or empty response from chat API");
@@ -300,6 +315,21 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
+        
+        {/* Streaming response */}
+        {streamingResponse && (
+          <div className="flex items-start mb-4">
+            <div className="flex-shrink-0 mr-3">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
+                AI
+              </div>
+            </div>
+            <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg max-w-[80%] animate-fade-in">
+              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{streamingResponse}</p>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
       

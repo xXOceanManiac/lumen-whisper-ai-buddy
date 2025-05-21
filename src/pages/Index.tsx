@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { CalendarEvent, Message, Settings } from "@/types";
 import { getSettings, saveSettings, getChatHistory, saveChatHistory, defaultSettings } from "@/utils/localStorage";
@@ -237,11 +238,22 @@ const Index = () => {
     setStreamingResponse("");
     
     try {
-      // Call chat API
+      // Create a temporary ID for the streaming message
+      const tempMessageId = "streaming-" + Date.now().toString();
+      
+      // Call chat API with streaming handler
       const response = await callChatApi(
         [...messages, userMessage],
-        settings.openaiApiKey
+        settings.openaiApiKey,
+        "user-id", // Replace with actual user ID
+        (chunk) => {
+          // Update the streaming response as chunks arrive
+          setStreamingResponse(prev => prev + chunk);
+        }
       );
+      
+      // Clear streaming response once complete
+      setStreamingResponse("");
       
       // Create the assistant message
       const assistantMessage: Message = {
