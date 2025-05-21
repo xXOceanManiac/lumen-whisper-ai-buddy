@@ -4,6 +4,7 @@ import { googleLoginUrl } from "@/api/auth";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import LumenLogo from "./LumenLogo";
 
 const LoginView = () => {
   const { lastAuthCheck } = useAuth();
@@ -17,6 +18,7 @@ const LoginView = () => {
     >
       <div className="max-w-md w-full space-y-8 text-center">
         <div className="space-y-4">
+          <LumenLogo size={100} className="mx-auto" />
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
             Welcome to Lumen
           </h1>
