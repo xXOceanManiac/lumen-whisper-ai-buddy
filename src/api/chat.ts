@@ -81,7 +81,7 @@ export const callChatApi = async (
 
     console.log("✅ API response stream received");
     
-    // Advanced helper function to intelligently append chunks with proper spacing and prevent word splits
+    // Improved helper function to intelligently append chunks with proper spacing and prevent word splits
     const appendChunkWithSmartSpacing = (currentContent: string, newChunk: string): string => {
       // Trim the chunk to remove any whitespace artifacts
       const trimmedChunk = newChunk.trim();
