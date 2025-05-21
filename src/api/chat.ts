@@ -81,15 +81,21 @@ export const callChatApi = async (
 
     console.log("✅ API response stream received");
     
-    // Simple helper function to add proper spacing between chunks
-    const appendChunkWithProperSpacing = (currentContent: string, newChunk: string): string => {
+    // Enhanced helper function for proper text formatting with paragraph breaks
+    const formatStreamedText = (currentContent: string, newChunk: string): string => {
       if (!newChunk.trim()) return currentContent;
       
       const lastChar = currentContent.slice(-1);
-      const firstChar = newChunk.trim()[0];
+      const firstChar = newChunk.charAt(0);
       
-      // Need space if: last char is letter/number AND first char is letter/number
-      // AND current content doesn't already end with space/punctuation
+      // Check if we should add a paragraph break
+      // When previous content ends with sentence-ending punctuation and new chunk starts with capital letter
+      if (/[.!?]$/.test(currentContent) && /^[A-Z]/.test(newChunk) && !currentContent.endsWith('\n\n')) {
+        return currentContent + '\n\n' + newChunk;
+      }
+      
+      // Check if we need a space between words
+      // When last char is letter/number AND first char is letter/number AND current content doesn't end with space/punctuation
       const needsSpace = 
         /[a-zA-Z0-9]/.test(lastChar) && 
         /[a-zA-Z0-9]/.test(firstChar) && 
@@ -123,8 +129,8 @@ export const callChatApi = async (
               if (content === '[DONE]') {
                 console.log("Stream completed with [DONE] marker");
               } else {
-                // Apply improved spacing logic when adding new content
-                completeContent = appendChunkWithProperSpacing(completeContent, content);
+                // Apply enhanced formatting logic when adding new content
+                completeContent = formatStreamedText(completeContent, content);
                 onChunk(content); // Pass the chunk to the callback
               }
             }
@@ -137,7 +143,9 @@ export const callChatApi = async (
           // Fix any double spaces
           .replace(/\s{2,}/g, ' ')
           // Fix comma spacing consistently
-          .replace(/,([^\s"])/g, ', $1');
+          .replace(/,([^\s"])/g, ', $1')
+          // Add proper paragraph breaks after sentences
+          .replace(/([.!?])([A-Z])/g, '$1\n\n$2');
         
         // Parse the complete content for calendar events
         let calendarEvent;
@@ -208,3 +216,4 @@ export const callChatApi = async (
     throw error;
   }
 };
+

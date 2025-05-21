@@ -92,21 +92,27 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     }
   };
   
-  // Simple helper function to add proper spacing between chunks
-  const appendStreamingChunk = (currentText: string, newChunk: string): string => {
-    if (!newChunk.trim()) return currentText;
+  // Enhanced text formatting function with paragraph breaks
+  const formatStreamingContent = (current: string, newChunk: string): string => {
+    if (!newChunk.trim()) return current;
     
-    const lastChar = currentText.slice(-1);
-    const firstChar = newChunk.trim()[0];
+    const lastChar = current.slice(-1);
+    const firstChar = newChunk.charAt(0);
     
-    // Need space if: last char is letter/number AND first char is letter/number
-    // AND current text doesn't already end with space/punctuation
+    // Check for paragraph breaks - when previous content ends with sentence-ending punctuation 
+    // and new chunk starts with capital letter
+    if (/[.!?]$/.test(current) && /^[A-Z]/.test(newChunk) && !current.endsWith('\n\n')) {
+      return current + '\n\n' + newChunk;
+    }
+    
+    // Check if we need a space between words - when last char is letter/number AND first char is letter/number
+    // AND current content doesn't end with space/punctuation
     const needsSpace = 
       /[a-zA-Z0-9]/.test(lastChar) && 
       /[a-zA-Z0-9]/.test(firstChar) && 
-      !/[\s\.,!?;:]$/.test(currentText);
+      !/[\s\.,!?;:]$/.test(current);
     
-    return currentText + (needsSpace ? ' ' : '') + newChunk;
+    return current + (needsSpace ? ' ' : '') + newChunk;
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -219,19 +225,21 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           openaiKey, 
           googleId,
           (chunk) => {
-            // Use the simplified proper spacing function to update the streaming response
-            setStreamingResponse(prev => appendStreamingChunk(prev, chunk));
+            // Use the improved spacing function with paragraph breaks
+            setStreamingResponse(prev => formatStreamingContent(prev, chunk));
           }
         );
         
         console.log("✅ Chat API streaming response completed");
         
-        // A final cleanup of any formatting issues
+        // Apply final formatting
         let cleanedContent = response.content
           // Fix any double spaces
           .replace(/\s{2,}/g, ' ')
-          // Fix comma spacing consistently
-          .replace(/,([^\s"])/g, ', $1');
+          // Fix comma spacing consistently 
+          .replace(/,([^\s"])/g, ', $1')
+          // Add proper paragraph breaks
+          .replace(/([.!?])([A-Z])/g, '$1\n\n$2');
         
         // Clear streaming response once complete
         setStreamingResponse("");

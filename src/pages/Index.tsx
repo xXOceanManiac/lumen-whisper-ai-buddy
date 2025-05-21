@@ -156,21 +156,27 @@ const Index = () => {
     verifyCalendarConnection();
   }, [settings.googleCalendarConnected, settings.openaiApiKey]);
   
-  // Simple helper function to add proper spacing between chunks
-  const appendStreamingChunk = (currentText: string, newChunk: string): string => {
-    if (!newChunk.trim()) return currentText;
+  // Enhanced text formatting function
+  const formatStreamingContent = (current: string, newChunk: string): string => {
+    if (!newChunk.trim()) return current;
     
-    const lastChar = currentText.slice(-1);
-    const firstChar = newChunk.trim()[0];
+    const lastChar = current.slice(-1);
+    const firstChar = newChunk.charAt(0);
     
-    // Need space if: last char is letter/number AND first char is letter/number
-    // AND current text doesn't already end with space/punctuation
+    // Check for paragraph breaks - when previous content ends with sentence-ending punctuation 
+    // and new chunk starts with capital letter
+    if (/[.!?]$/.test(current) && /^[A-Z]/.test(newChunk) && !current.endsWith('\n\n')) {
+      return current + '\n\n' + newChunk;
+    }
+    
+    // Check if we need a space between words - when last char is letter/number AND first char is letter/number
+    // AND current content doesn't end with space/punctuation
     const needsSpace = 
       /[a-zA-Z0-9]/.test(lastChar) && 
       /[a-zA-Z0-9]/.test(firstChar) && 
-      !/[\s\.,!?;:]$/.test(currentText);
+      !/[\s\.,!?;:]$/.test(current);
     
-    return currentText + (needsSpace ? ' ' : '') + newChunk;
+    return current + (needsSpace ? ' ' : '') + newChunk;
   };
   
   // Functions
@@ -263,20 +269,22 @@ const Index = () => {
         settings.openaiApiKey,
         "user-id", // Replace with actual user ID
         (chunk) => {
-          // Use the simplified proper spacing function to update streaming response
-          setStreamingResponse(prev => appendStreamingChunk(prev, chunk));
+          // Use the improved formatting function for streaming response
+          setStreamingResponse(prev => formatStreamingContent(prev, chunk));
         }
       );
       
       // Clear streaming response once complete
       setStreamingResponse("");
       
-      // Final cleanup of any formatting issues
+      // Enhanced final formatting with paragraph breaks
       let cleanedContent = response.content
         // Fix any double spaces
         .replace(/\s{2,}/g, ' ')
         // Fix comma spacing consistently
-        .replace(/,([^\s"])/g, ', $1');
+        .replace(/,([^\s"])/g, ', $1')
+        // Add proper paragraph breaks
+        .replace(/([.!?])([A-Z])/g, '$1\n\n$2');
       
       // Create the assistant message
       const assistantMessage: Message = {
