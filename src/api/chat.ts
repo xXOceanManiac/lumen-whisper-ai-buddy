@@ -81,71 +81,21 @@ export const callChatApi = async (
 
     console.log("✅ API response stream received");
     
-    // Improved helper function to intelligently append chunks with proper spacing and prevent word splits
-    const appendChunkWithSmartSpacing = (currentContent: string, newChunk: string): string => {
-      // Trim the chunk to remove any whitespace artifacts
-      const trimmedChunk = newChunk.trim();
-      if (!trimmedChunk) return currentContent; // Skip empty chunks
+    // Simple helper function to add proper spacing between chunks
+    const appendChunkWithProperSpacing = (currentContent: string, newChunk: string): string => {
+      if (!newChunk.trim()) return currentContent;
       
-      let result = currentContent;
+      const lastChar = currentContent.slice(-1);
+      const firstChar = newChunk.trim()[0];
       
-      // If we have existing content
-      if (result) {
-        const lastChar = result.charAt(result.length - 1);
-        const firstChar = trimmedChunk.charAt(0);
-        
-        // Fix comma spacing - ensure there's a space after comma
-        if (lastChar === ',' && /\S/.test(firstChar) && firstChar !== '"' && firstChar !== "'") {
-          return result + ' ' + trimmedChunk;
-        }
-        
-        // Check for mid-word splits - if last char is letter and first char is letter/number with no space
-        // and there are no indicators that this is a new sentence, this might be a mid-word split
-        const isPossibleWordContinuation = 
-          /[a-zA-Z]/.test(lastChar) && 
-          /[a-zA-Z0-9]/.test(firstChar) && 
-          !/[.!?]/.test(result.slice(-2)) && 
-          !/\s$/.test(result);
-        
-        if (isPossibleWordContinuation) {
-          // Don't add a space, likely a mid-word split
-          return result + trimmedChunk;
-        }
-        
-        // Check if this chunk might start a new paragraph (after sentence end)
-        const isNewParagraph = 
-          /[.!?]["']?\s*$/.test(result) && 
-          /[A-Z]/.test(firstChar) &&
-          trimmedChunk.length > 1;
-        
-        if (isNewParagraph && !result.endsWith("\n\n")) {
-          // Add paragraph break
-          return result + "\n\n" + trimmedChunk;
-        }
-        
-        // Check if we need to add a space between words
-        const needsSpace = 
-          // Last char is a letter/number and next char is a letter/number
-          (/[a-zA-Z0-9]/.test(lastChar) && /[a-zA-Z0-9]/.test(firstChar)) ||
-          // Special handling for some scenarios (like "word. Another" needs a space)
-          (lastChar === '.' && /[A-Z]/.test(firstChar));
-        
-        // Check if we need to remove a trailing space before punctuation
-        const needsToRemoveSpace =
-          result.endsWith(' ') && 
-          ['.', ',', '!', '?', ':', ';', ')', ']', '}'].includes(firstChar);
-        
-        if (needsToRemoveSpace) {
-          // Remove trailing space before adding punctuation
-          result = result.slice(0, -1);
-        } else if (needsSpace && !result.endsWith(' ') && !result.endsWith("\n")) {
-          // Add a space between words when needed
-          result += ' ';
-        }
-      }
+      // Need space if: last char is letter/number AND first char is letter/number
+      // AND current content doesn't already end with space/punctuation
+      const needsSpace = 
+        /[a-zA-Z0-9]/.test(lastChar) && 
+        /[a-zA-Z0-9]/.test(firstChar) && 
+        !/[\s\.,!?;:]$/.test(currentContent);
       
-      // Append the new chunk
-      return result + trimmedChunk;
+      return currentContent + (needsSpace ? ' ' : '') + newChunk;
     };
     
     // Handle streaming response
@@ -173,8 +123,8 @@ export const callChatApi = async (
               if (content === '[DONE]') {
                 console.log("Stream completed with [DONE] marker");
               } else {
-                // Apply improved smart spacing logic when adding new content
-                completeContent = appendChunkWithSmartSpacing(completeContent, content);
+                // Apply improved spacing logic when adding new content
+                completeContent = appendChunkWithProperSpacing(completeContent, content);
                 onChunk(content); // Pass the chunk to the callback
               }
             }
