@@ -156,7 +156,7 @@ const Index = () => {
     verifyCalendarConnection();
   }, [settings.googleCalendarConnected, settings.openaiApiKey]);
   
-  // Helper function to intelligently add streaming chunks with proper spacing
+  // Improved helper function to intelligently add streaming chunks with proper spacing
   const appendStreamingChunk = (currentText: string, newChunk: string): string => {
     // Trim the chunk to remove any whitespace artifacts
     const trimmedChunk = newChunk.trim();
@@ -168,6 +168,24 @@ const Index = () => {
     if (result) {
       const lastChar = result.charAt(result.length - 1);
       const firstChar = trimmedChunk.charAt(0);
+      
+      // Fix comma spacing - ensure there's a space after comma
+      if (lastChar === ',' && /\S/.test(firstChar) && firstChar !== '"' && firstChar !== "'") {
+        return result + ' ' + trimmedChunk;
+      }
+      
+      // Check for mid-word splits - if last char is letter and first char is letter/number with no space
+      // and there are no indicators that this is a new sentence, this might be a mid-word split
+      const isPossibleWordContinuation = 
+        /[a-zA-Z]/.test(lastChar) && 
+        /[a-zA-Z0-9]/.test(firstChar) && 
+        !/[.!?]/.test(result.slice(-2)) && 
+        !/\s$/.test(result);
+      
+      if (isPossibleWordContinuation) {
+        // Don't add a space, likely a mid-word split
+        return result + trimmedChunk;
+      }
       
       // Check if this chunk might start a new paragraph (after sentence end)
       const isNewParagraph = 
@@ -295,7 +313,7 @@ const Index = () => {
         settings.openaiApiKey,
         "user-id", // Replace with actual user ID
         (chunk) => {
-          // Use the smarter function to update the streaming response with better spacing
+          // Use the improved smarter function to update the streaming response with better spacing
           setStreamingResponse(prev => appendStreamingChunk(prev, chunk));
         }
       );
@@ -303,11 +321,18 @@ const Index = () => {
       // Clear streaming response once complete
       setStreamingResponse("");
       
+      // Final cleanup of any formatting issues
+      let cleanedContent = response.content
+        // Fix any double spaces
+        .replace(/\s{2,}/g, ' ')
+        // Fix comma spacing consistently
+        .replace(/,([^\s"])/g, ', $1');
+      
       // Create the assistant message
       const assistantMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: response.content,
+        content: cleanedContent,
         timestamp: Date.now(),
       };
       

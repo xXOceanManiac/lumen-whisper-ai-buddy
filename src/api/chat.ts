@@ -1,3 +1,4 @@
+
 import { Message } from "@/types";
 import { validateOpenAIKeyFormat } from "@/utils/localStorage";
 
@@ -80,7 +81,7 @@ export const callChatApi = async (
 
     console.log("✅ API response stream received");
     
-    // Helper function to intelligently append chunks with proper spacing
+    // Advanced helper function to intelligently append chunks with proper spacing and prevent word splits
     const appendChunkWithSmartSpacing = (currentContent: string, newChunk: string): string => {
       // Trim the chunk to remove any whitespace artifacts
       const trimmedChunk = newChunk.trim();
@@ -92,6 +93,24 @@ export const callChatApi = async (
       if (result) {
         const lastChar = result.charAt(result.length - 1);
         const firstChar = trimmedChunk.charAt(0);
+        
+        // Fix comma spacing - ensure there's a space after comma
+        if (lastChar === ',' && /\S/.test(firstChar) && firstChar !== '"' && firstChar !== "'") {
+          return result + ' ' + trimmedChunk;
+        }
+        
+        // Check for mid-word splits - if last char is letter and first char is letter/number with no space
+        // and there are no indicators that this is a new sentence, this might be a mid-word split
+        const isPossibleWordContinuation = 
+          /[a-zA-Z]/.test(lastChar) && 
+          /[a-zA-Z0-9]/.test(firstChar) && 
+          !/[.!?]/.test(result.slice(-2)) && 
+          !/\s$/.test(result);
+        
+        if (isPossibleWordContinuation) {
+          // Don't add a space, likely a mid-word split
+          return result + trimmedChunk;
+        }
         
         // Check if this chunk might start a new paragraph (after sentence end)
         const isNewParagraph = 
@@ -154,7 +173,7 @@ export const callChatApi = async (
               if (content === '[DONE]') {
                 console.log("Stream completed with [DONE] marker");
               } else {
-                // Apply smart spacing logic when adding new content
+                // Apply improved smart spacing logic when adding new content
                 completeContent = appendChunkWithSmartSpacing(completeContent, content);
                 onChunk(content); // Pass the chunk to the callback
               }
@@ -162,6 +181,13 @@ export const callChatApi = async (
             // We can ignore 'event: done' lines as we already check for '[DONE]'
           }
         }
+        
+        // Final cleanup of any remaining formatting issues
+        completeContent = completeContent
+          // Fix any double spaces
+          .replace(/\s{2,}/g, ' ')
+          // Fix comma spacing consistently
+          .replace(/,([^\s"])/g, ', $1');
         
         // Parse the complete content for calendar events
         let calendarEvent;
