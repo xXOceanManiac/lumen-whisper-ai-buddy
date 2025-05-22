@@ -1,4 +1,33 @@
+
 import { getRememberAuth } from "@/utils/localStorage";
+
+// Google login URL for OAuth authentication
+export const googleLoginUrl = '/api/auth/google/login';
+
+// Function to log out the user
+export const logout = async (): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error('Logout failed:', response.status, response.statusText);
+      return false;
+    }
+    
+    // Clear any local storage related to authentication
+    localStorage.removeItem('lumen-user-data');
+    
+    return true;
+  } catch (error) {
+    console.error('Error during logout:', error);
+    return false;
+  }
+};
 
 // Function to check authentication status
 export const checkAuth = async () => {
