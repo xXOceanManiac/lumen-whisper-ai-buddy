@@ -1,4 +1,3 @@
-
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
@@ -13,15 +12,13 @@ export const logout = async (): Promise<boolean> => {
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       console.error('Logout failed:', response.status, response.statusText);
       return false;
     }
-    
-    // Clear any local storage related to authentication
+
     localStorage.removeItem('lumen-user-data');
-    
     return true;
   } catch (error) {
     console.error('Error during logout:', error);
@@ -42,19 +39,14 @@ export const checkAuth = async () => {
     });
 
     if (!response.ok) {
-      // If the response status is not in the 200-299 range, it's an error
       console.error('Authentication check failed:', response.status, response.statusText);
-      
-      // Attempt to parse the error message from the response body
-      let errorType = "AUTH_FAILED"; // Default error type
+      let errorType = "AUTH_FAILED";
       try {
         const errorData = await response.json();
-        errorType = errorData.errorType || errorType; // Use specific error type from the backend if available
+        errorType = errorData.errorType || errorType;
       } catch (parseError) {
         console.error('Failed to parse error message from response:', parseError);
-        // If parsing fails, use the default error type
       }
-      
       return { authenticated: false, user: null, errorType: errorType };
     }
 
@@ -69,20 +61,20 @@ export const checkAuth = async () => {
 // Function to save the OpenAI API key to the backend
 export const saveOpenAIKey = async (googleId: string, openaiApiKey: string): Promise<boolean> => {
   try {
-    const response = await fetch('/api/save-openai-key', {
+    const response = await fetch('https://lumen-backend-main.fly.dev/api/save-openai-key', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ googleId, openaiApiKey }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Failed to save OpenAI API key:", errorData.error || response.statusText);
       return false;
     }
-    
+
     const data = await response.json();
     return data.success === true;
   } catch (error) {
@@ -96,18 +88,18 @@ export const getOpenAIKey = async (googleId: string): Promise<string | null> => 
   try {
     console.log(`🔑 Fetching OpenAI API key for user with googleId: ${googleId}`);
     const response = await fetch(`https://lumen-backend-main.fly.dev/api/get-openai-key?googleId=${googleId}`);
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("❌ Failed to get OpenAI API key:", errorData.error || response.statusText);
       return null;
     }
-    
+
     const data = await response.json();
-    
-    if (data.apiKey) {
+
+    if (data.openaiApiKey) {
       console.log("✅ Successfully retrieved OpenAI API key");
-      return data.apiKey;
+      return data.openaiApiKey;
     } else {
       console.error("❌ No API key returned from server");
       return null;
@@ -120,6 +112,5 @@ export const getOpenAIKey = async (googleId: string): Promise<string | null> => 
 
 // Function to validate an OpenAI API key format
 export const validateOpenAIKey = (key: string): boolean => {
-  // Basic validation: should start with "sk-" and be at least 30 chars long
   return key && key.startsWith('sk-') && key.length >= 30;
 };
