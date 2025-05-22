@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      google_tokens: {
+        Row: {
+          access_token: string
+          expiry_date: number | null
+          google_id: string
+          refresh_token: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          expiry_date?: number | null
+          google_id: string
+          refresh_token: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          expiry_date?: number | null
+          google_id?: string
+          refresh_token?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       openai_keys: {
         Row: {
           google_id: string

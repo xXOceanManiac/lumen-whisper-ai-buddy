@@ -216,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
           }
           
-          // Fetch fresh OpenAI API key
+          // Fetch fresh OpenAI API key - IMPORTANT: This happens right after authentication
           await fetchOpenAIKey(finalUser.googleId);
         } else if (savedUser && !googleSuccess) {
           // If we have a saved user but server authentication failed, and we're not in the middle
@@ -232,7 +232,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
           }
           
-          // Try to fetch API key using the saved user ID
+          // Try to fetch API key using the saved user ID - IMPORTANT: This also happens right after using saved credentials
           await fetchOpenAIKey(savedUser.googleId);
         } else {
           setUser(null);
