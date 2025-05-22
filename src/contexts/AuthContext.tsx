@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { checkAuth, getOpenAIKey, validateOpenAIKey } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
