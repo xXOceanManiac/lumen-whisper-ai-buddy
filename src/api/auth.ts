@@ -95,7 +95,7 @@ export const saveOpenAIKey = async (googleId: string, openaiApiKey: string): Pro
 export const getOpenAIKey = async (googleId: string): Promise<string | null> => {
   try {
     console.log(`🔑 Fetching OpenAI API key for user with googleId: ${googleId}`);
-    const response = await fetch(`/api/get-openai-key?googleId=${googleId}`);
+    const response = await fetch(`https://lumen-backend-main.fly.dev/api/get-openai-key?googleId=${googleId}`);
     
     if (!response.ok) {
       const errorData = await response.json();
