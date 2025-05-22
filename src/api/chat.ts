@@ -1,6 +1,6 @@
+
 import { Message } from "@/types";
 import { validateOpenAIKeyFormat } from "@/utils/localStorage";
-import { parseCalendarCommand, parseReminderText } from "./calendar";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
 
@@ -34,70 +34,6 @@ export const callChatApi = async (
     if (!googleId) {
       console.error("❌ Missing googleId in callChatApi");
       throw new Error("googleId is required for chat API calls");
-    }
-    
-    // Check if the last message might be a calendar command or reminder
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role === 'user') {
-      const calendarCommand = parseCalendarCommand(lastMessage.content);
-      
-      // Check for reminder-specific requests
-      if (calendarCommand.isCalendarCommand && calendarCommand.type === 'reminder') {
-        console.log("🔔 Detected reminder request:", lastMessage.content);
-        
-        // Parse the reminder text
-        const reminderData = parseReminderText(lastMessage.content);
-        
-        // If successfully parsed, create the reminder
-        if (reminderData.success && reminderData.task && reminderData.dateTime) {
-          try {
-            // Format dates for display
-            const formattedDate = reminderData.dateTime.toLocaleString([], {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-            
-            // Create a custom response instead of calling the OpenAI API
-            return {
-              content: `📅 Got it! I'll remind you to ${reminderData.task} on ${formattedDate}.`,
-              calendarEvent: {
-                summary: reminderData.task,
-                description: "Auto-added by Lumen reminder",
-                start: {
-                  dateTime: reminderData.dateTime.toISOString(),
-                },
-                end: {
-                  dateTime: reminderData.dateTime.toISOString(),
-                },
-                id: Date.now().toString(),
-                title: reminderData.task
-              }
-            };
-          } catch (err) {
-            console.error("❌ Error creating reminder:", err);
-          }
-        } else if (reminderData.task) {
-          // We understood the task but not the time
-          return {
-            content: `Just to confirm, when exactly would you like me to remind you to ${reminderData.task}?`
-          };
-        } else {
-          // We couldn't parse the reminder at all
-          return {
-            content: "Just to confirm, when exactly would you like me to remind you and what is the reminder for?"
-          };
-        }
-      } else if (calendarCommand.isCalendarCommand) {
-        console.log(`📅 Detected calendar ${calendarCommand.type} command`);
-        // Add this information to the request so the backend knows it's calendar-related
-        formattedMessages.push({
-          role: 'system',
-          content: `This appears to be a calendar ${calendarCommand.type} request. Process it accordingly.`
-        });
-      }
     }
     
     // Log the detailed request payload
