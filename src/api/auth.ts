@@ -1,3 +1,4 @@
+
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
@@ -73,13 +74,21 @@ export const checkAuth = async () => {
       const data = await response.json();
       console.log("✅ Auth check response:", data);
       
-      // CRITICAL FIX: Better detection of authenticated user from server response
-      // Check both isAuthenticated flag and user object existence
-      if ((data.isAuthenticated === true || data.authenticated === true) && (data.user)) {
-        console.log("✅ User is authenticated according to server:", data.user.googleId || data.user.id);
+      // CRITICAL FIX: If we have a user object, consider the user authenticated
+      // regardless of the isAuthenticated flag from the server
+      if (data.user) {
+        console.log("✅ User is authenticated according to server response user data:", data.user.googleId || data.user.id);
         return { 
           authenticated: true, 
           user: data.user, 
+          errorType: null 
+        };
+      } else if ((data.isAuthenticated === true || data.authenticated === true)) {
+        console.log("✅ User is authenticated according to server isAuthenticated flag");
+        // If server says authenticated but no user object, still treat as authenticated with empty user
+        return { 
+          authenticated: true, 
+          user: data.user || {}, 
           errorType: null 
         };
       } else {

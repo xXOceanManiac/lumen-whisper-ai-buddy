@@ -6,22 +6,26 @@ import { useEffect, useState } from "react";
 import LumenLogo from "./LumenLogo";
 
 const LoginView = () => {
-  const { lastAuthCheck } = useAuth();
+  const { lastAuthCheck, isLoading, verifyAuthentication } = useAuth();
   const [loginUrl] = useState(googleLoginUrl);
   const [loginAttempted, setLoginAttempted] = useState(false);
+  const [processingAuth, setProcessingAuth] = useState(false);
 
   useEffect(() => {
     // Check if we were redirected back with loggedIn=true
     const wasRedirected = isPostAuthRedirect();
     
-    if (wasRedirected) {
+    if (wasRedirected && !loginAttempted) {
       console.log("📣 Detected return from Google auth with loggedIn=true");
       setLoginAttempted(true);
+      setProcessingAuth(true);
       
-      // Don't clean up URL yet - we'll let AuthContext do that after checking auth
-      // This is to prevent cleaning up the URL before the auth state is checked
+      // Explicitly verify authentication
+      verifyAuthentication().finally(() => {
+        setProcessingAuth(false);
+      });
     }
-  }, []);
+  }, [loginAttempted, verifyAuthentication]);
 
   return (
     <motion.div 
@@ -63,11 +67,16 @@ const LoginView = () => {
             </p>
           )}
 
-          {loginAttempted && (
+          {(loginAttempted || processingAuth) && (
             <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                Login detected! Verifying authentication status...
+                {processingAuth ? "Verifying authentication status..." : "Login detected! Checking session..."}
               </p>
+              {processingAuth && (
+                <div className="mt-2 flex justify-center">
+                  <div className="animate-spin w-5 h-5 border-2 border-yellow-600 dark:border-yellow-300 border-t-transparent rounded-full"></div>
+                </div>
+              )}
             </div>
           )}
           

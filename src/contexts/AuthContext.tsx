@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect, ReactNode } from "react";
+import { createContext, useState, useContext, useEffect, ReactNode, useCallback } from "react";
 import { checkAuth, getOpenAIKey, cleanupAuthRedirect, isPostAuthRedirect } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 import { saveOpenAIKey as saveOpenAIKeyToStorage, getOpenAIKey as getOpenAIKeyFromStorage, validateOpenAIKeyFormat } from "@/utils/localStorage";
@@ -21,6 +21,7 @@ interface AuthContextType {
   setOpenaiKey: (key: string) => void;
   setHasCompletedOnboarding: (value: boolean) => void;
   refreshOpenAIKey: () => Promise<boolean>;
+  verifyAuthentication: (isInitialLoad?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,7 +34,8 @@ const AuthContext = createContext<AuthContextType>({
   hasCompletedOnboarding: false,
   setOpenaiKey: () => {},
   setHasCompletedOnboarding: () => {},
-  refreshOpenAIKey: async () => false
+  refreshOpenAIKey: async () => false,
+  verifyAuthentication: async () => {}
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -167,7 +169,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Primary authentication verification function with improved session handling
-  const verifyAuthentication = async (isInitialLoad = false) => {
+  const verifyAuthentication = useCallback(async (isInitialLoad = false) => {
     try {
       console.log("🔄 Starting authentication verification...");
       
@@ -189,14 +191,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Check authentication status with backend
       console.log("🔄 Checking authentication status with backend...");
-      const { authenticated, user: serverUser, errorType } = await checkAuth();
+      const authResult = await checkAuth();
+      const { authenticated, user: serverUser, errorType } = authResult;
       
       // Update last check timestamp
       setLastAuthCheck(Date.now());
       
-      if (authenticated && serverUser) {
+      console.log("🔍 Auth check result:", { authenticated, hasUser: !!serverUser, errorType });
+      
+      // CRITICAL FIX: If server returns a user object, consider the session authenticated
+      // regardless of the authenticated flag
+      if (authenticated || serverUser) {
         // Successfully authenticated with backend
-        console.log("✅ Authentication verified: user is authenticated with googleId:", serverUser.googleId);
+        console.log("✅ Authentication verified with server user:", serverUser);
         
         // Update auth state
         setIsAuthenticated(true);
@@ -204,13 +211,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setError(null);
         
         // Save to localStorage for persistence
-        saveUserToStorage(serverUser);
+        if (serverUser?.googleId) {
+          saveUserToStorage(serverUser);
+        }
         
         // If we were redirected from Google auth, show success toast
         if (isPostRedirect) {
           toast({
             title: "Authentication Successful",
-            description: `Welcome, ${serverUser.name || 'User'}!`,
+            description: `Welcome, ${serverUser?.name || 'User'}!`,
           });
           
           // Clean up URL now that we've processed the redirect
@@ -224,8 +233,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
         }
         
-        // Fetch fresh OpenAI API key
-        await fetchOpenAIKey(serverUser.googleId);
+        // Fetch fresh OpenAI API key if we have a user ID
+        if (serverUser?.googleId) {
+          await fetchOpenAIKey(serverUser.googleId);
+        }
       } 
       else if (savedUser && !isPostRedirect && !isInitialLoad) {
         // Server authentication failed but we have saved user data and aren't in the middle of authentication
@@ -251,9 +262,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Don't clear user/auth state yet if we're in post-redirect state
           // This gives time for cookies to be properly recognized
           
-          // Clean up URL despite failure
-          cleanupAuthRedirect();
-          
           // Schedule another auth check after a brief delay
           setTimeout(() => {
             console.log("🔄 Retrying auth verification after redirect...");
@@ -264,6 +272,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           setIsAuthenticated(false);
           setError(errorType || "AUTH_FAILED");
+          
+          // Log the reason for authentication failure before redirecting
+          console.warn("❌ Not authenticated after checkAuth(), will redirect to login", {
+            errorType,
+            isRedirect: isPostRedirect,
+            authenticationAttempted: authAttempted
+          });
         }
       }
     } catch (err) {
@@ -280,7 +295,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authAttempted, isRedirectedFromAuth, toast]);
 
   // Effect for initial authentication check
   useEffect(() => {
@@ -289,7 +304,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkInitialAuth();
-  }, []);
+  }, [verifyAuthentication]);
   
   // Additional effect to detect post-auth redirects
   useEffect(() => {
@@ -298,7 +313,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("🔄 Detected post-auth redirect, triggering immediate auth verification");
       verifyAuthentication();
     }
-  }, [authAttempted, isLoading]);
+  }, [authAttempted, isLoading, verifyAuthentication]);
 
   return (
     <AuthContext.Provider 
@@ -312,7 +327,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasCompletedOnboarding,
         setOpenaiKey: handleSetOpenaiKey,
         setHasCompletedOnboarding,
-        refreshOpenAIKey
+        refreshOpenAIKey,
+        verifyAuthentication
       }}
     >
       {children}
