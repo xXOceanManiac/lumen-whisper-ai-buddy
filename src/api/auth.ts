@@ -2,7 +2,7 @@
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
-export const googleLoginUrl = 'https://lumen-backend-main.fly.dev/auth/google/login';
+export const googleLoginUrl = 'https://lumen-backend-main.fly.dev/auth/google';
 
 // Function to log out the user
 export const logout = async (): Promise<boolean> => {
