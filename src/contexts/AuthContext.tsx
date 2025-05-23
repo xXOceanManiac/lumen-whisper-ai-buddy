@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { checkAuth, getOpenAIKey, validateOpenAIKey } from "@/api/auth";
+import { checkAuth, getOpenAIKey, validateOpenAIKey, pingAuthEndpoint } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 import { saveOpenAIKey as saveOpenAIKeyToStorage, getOpenAIKey as getOpenAIKeyFromStorage, validateOpenAIKeyFormat } from "@/utils/localStorage";
 
@@ -182,6 +182,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Clean up URL without refreshing the page
           window.history.replaceState({}, document.title, window.location.pathname);
           console.log("Detected Google auth success, cleaned up URL params");
+          
+          // After successful Google login, ping the auth endpoint to verify it's working
+          await pingAuthEndpoint();
         }
         
         // Check authentication status
@@ -191,7 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLastAuthCheck(Date.now());
         
         if (authenticated && serverUser) {
-          // Use server user data or existing data from localStorage if available
+          // Use server user data 
           const finalUser = serverUser;
           setUser(finalUser);
           setError(null);
@@ -231,14 +234,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
           }
           
-          // Try to fetch API key using the saved user ID - IMPORTANT: This also happens right after using saved credentials
+          // Try to fetch API key using the saved user ID
           await fetchOpenAIKey(savedUser.googleId);
         } else {
           setUser(null);
           setOpenaiKey(null);
-          // Use the specific error type
-          setError(errorType || "AUTH_FAILED");
-          console.log(`Authentication failed: ${errorType || "AUTH_FAILED"}`);
+          
+          // Enhanced error logging
+          if (errorType === "API_MISCONFIGURED") {
+            console.error("Authentication endpoint returned HTML instead of JSON - API route may be misconfigured");
+            setError("API_MISCONFIGURED");
+          } else {
+            setError(errorType || "AUTH_FAILED");
+            console.log(`Authentication failed: ${errorType || "AUTH_FAILED"}`);
+          }
           
           // Clear local storage on authentication failure
           localStorage.removeItem(USER_STORAGE_KEY);

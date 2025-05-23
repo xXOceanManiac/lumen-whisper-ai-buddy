@@ -1,3 +1,4 @@
+
 import { Message } from "@/types";
 import { validateOpenAIKeyFormat } from "@/utils/localStorage";
 
@@ -70,8 +71,15 @@ export const callChatApi = async (
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get chat response: ${response.status} ${errorText}`);
+      // Enhanced error handling
+      let errorMessage = `Failed to get chat response: ${response.status}`;
+      try {
+        const errorText = await response.text();
+        errorMessage += ` - ${errorText || response.statusText}`;
+      } catch (e) {
+        errorMessage += ` - ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const reader = response.body?.getReader();

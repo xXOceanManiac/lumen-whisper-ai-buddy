@@ -1,4 +1,3 @@
-
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
@@ -12,6 +11,7 @@ export const logout = async (): Promise<boolean> => {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',  // Ensure cookies are included in the request
     });
 
     if (!response.ok) {
@@ -36,11 +36,20 @@ export const checkAuth = async () => {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',  // Critical: Include cookies with the request
       body: JSON.stringify({ remember: rememberAuth }),
     });
 
     if (!response.ok) {
       console.error('Authentication check failed:', response.status, response.statusText);
+
+      // Handle HTML responses (which indicate routing issues)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        console.error('Received HTML instead of JSON. API route may be misconfigured.');
+        return { authenticated: false, user: null, errorType: "API_MISCONFIGURED" };
+      }
+
       let errorType = "AUTH_FAILED";
       try {
         const errorData = await response.json();
@@ -55,6 +64,7 @@ export const checkAuth = async () => {
     return { authenticated: data.authenticated, user: data.user, errorType: null };
   } catch (error) {
     console.error('Error checking authentication:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     return { authenticated: false, user: null, errorType: "AUTH_FAILED" };
   }
 };
@@ -114,4 +124,26 @@ export const getOpenAIKey = async (googleId: string): Promise<string | null> => 
 // Function to validate an OpenAI API key format
 export const validateOpenAIKey = (key: string): boolean => {
   return key && key.startsWith('sk-') && key.length >= 30;
+};
+
+// Add a function to check if the backend is responding properly
+export const pingAuthEndpoint = async (): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/auth/ping', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      console.error('Auth endpoint ping failed:', response.status, response.statusText);
+      return false;
+    }
+    
+    const data = await response.json();
+    console.log('Auth endpoint ping response:', data);
+    return true;
+  } catch (error) {
+    console.error('Auth endpoint ping error:', error);
+    return false;
+  }
 };
