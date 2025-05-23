@@ -1,5 +1,6 @@
+
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { checkAuth, getOpenAIKey, validateOpenAIKey, pingAuthEndpoint } from "@/api/auth";
+import { checkAuth, getOpenAIKey, validateOpenAIKey, pingAuthEndpoint, cleanupAuthRedirect, isPostAuthRedirect } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 import { saveOpenAIKey as saveOpenAIKeyToStorage, getOpenAIKey as getOpenAIKeyFromStorage, validateOpenAIKeyFormat } from "@/utils/localStorage";
 
@@ -49,12 +50,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastAuthCheck, setLastAuthCheck] = useState<number | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [authAttempted, setAuthAttempted] = useState(false);
   const { toast } = useToast();
 
   // Save user data to localStorage
   const saveUserToStorage = (userData: User) => {
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-    console.log("User data saved to localStorage with googleId:", userData.googleId);
+    console.log("✅ User data saved to localStorage with googleId:", userData.googleId);
   };
 
   // Load user data from localStorage
@@ -63,10 +65,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData) as User;
-        console.log("User data loaded from localStorage with googleId:", parsedUser.googleId);
+        console.log("✅ User data loaded from localStorage with googleId:", parsedUser.googleId);
         return parsedUser;
       } catch (e) {
-        console.error("Error parsing user data from localStorage:", e);
+        console.error("❌ Error parsing user data from localStorage:", e);
         return null;
       }
     }
@@ -164,128 +166,144 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        console.log("🔄 Starting authentication verification...");
-        // Check if we just got redirected from successful Google login
-        const urlParams = new URLSearchParams(window.location.search);
-        const googleSuccess = urlParams.get('google') === 'success';
-        
-        // Check if we have a saved user in localStorage
-        const savedUser = loadUserFromStorage();
-        // Load saved API key from localStorage
-        const savedApiKey = getOpenAIKeyFromStorage();
-        
-        // If we just got redirected from successful Google login, clean up URL parameter
-        if (googleSuccess) {
-          // Clean up URL without refreshing the page
-          window.history.replaceState({}, document.title, window.location.pathname);
-          console.log("✅ Detected Google auth success, cleaned up URL params");
-          
-          // After successful Google login, ping the auth endpoint to verify it's working
-          await pingAuthEndpoint();
-        }
-        
-        // Check authentication status using the updated function that points to /auth/whoami
-        const { authenticated, user: serverUser, errorType } = await checkAuth();
-        
-        setIsAuthenticated(authenticated);
-        setLastAuthCheck(Date.now());
-        
-        if (authenticated && serverUser) {
-          // Use server user data 
-          const finalUser = serverUser;
-          setUser(finalUser);
-          setError(null);
-          console.log("✅ Authentication verified: user is authenticated with googleId:", finalUser.googleId);
-          
-          // Save user data to localStorage for persistence
-          saveUserToStorage(finalUser);
-          
-          // Show success toast if we just completed Google authentication
-          if (googleSuccess) {
-            toast({
-              title: "Authentication Successful",
-              description: `Welcome, ${finalUser.name || 'User'}!`,
-            });
-          }
-          
-          // If we have a saved API key, restore it immediately for better UX
-          if (savedApiKey) {
-            setOpenaiKey(savedApiKey);
-            setHasCompletedOnboarding(true);
-            console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
-          }
-          
-          // Fetch fresh OpenAI API key
-          await fetchOpenAIKey(finalUser.googleId);
-        } else if (savedUser && !googleSuccess) {
-          // If we have a saved user but server authentication failed, and we're not in the middle
-          // of a new authentication attempt, try to use the saved user data
-          console.log("⚠️ Using saved user data from localStorage with googleId:", savedUser.googleId);
-          setUser(savedUser);
-          setIsAuthenticated(true);
-          
-          // If we have a saved API key, restore it immediately
-          if (savedApiKey) {
-            setOpenaiKey(savedApiKey);
-            setHasCompletedOnboarding(true);
-            console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
-          }
-          
-          // Try to fetch API key using the saved user ID
-          await fetchOpenAIKey(savedUser.googleId);
-        } else {
-          setUser(null);
-          setOpenaiKey(null);
-          
-          // Enhanced error logging
-          if (errorType === "API_MISCONFIGURED") {
-            console.error("❌ Authentication endpoint returned HTML instead of JSON - API route may be misconfigured");
-            setError("API_MISCONFIGURED");
-          } else if (errorType === "INVALID_RESPONSE") {
-            console.error("❌ Authentication endpoint returned invalid non-JSON response");
-            setError("INVALID_RESPONSE");
-          } else if (errorType === "PARSE_ERROR") {
-            console.error("❌ Could not parse JSON response from authentication endpoint");
-            setError("PARSE_ERROR");
-          } else {
-            setError(errorType || "AUTH_FAILED");
-            console.log(`❌ Authentication failed: ${errorType || "AUTH_FAILED"}`);
-          }
-          
-          // Clear local storage on authentication failure
-          localStorage.removeItem(USER_STORAGE_KEY);
-          
-          // Show error toast if Google authentication failed
-          if (googleSuccess) {
-            toast({
-              title: "Authentication Failed",
-              description: "Could not authenticate with Google. Please try again.",
-              variant: "destructive",
-            });
-          }
-        }
-      } catch (err) {
-        setUser(null);
-        setOpenaiKey(null);
-        setError("UNEXPECTED_ERROR");
-        console.error("❌ Unexpected authentication verification error:", err);
-        
-        // Show error toast for unexpected errors
-        toast({
-          title: "Authentication Error",
-          description: "An unexpected error occurred. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+  // Primary authentication verification function with improved session handling
+  const verifyAuthentication = async (isInitialLoad = false) => {
+    try {
+      console.log("🔄 Starting authentication verification...");
+      
+      // Record that auth has been attempted
+      setAuthAttempted(true);
+      
+      // Check if we just got redirected from successful Google login
+      const isPostRedirect = isPostAuthRedirect();
+      
+      if (isPostRedirect) {
+        console.log("✅ Detected post-auth redirect with loggedIn=true");
       }
+      
+      // Get saved user from localStorage for fallback
+      const savedUser = loadUserFromStorage();
+      
+      // Load saved API key from localStorage
+      const savedApiKey = getOpenAIKeyFromStorage();
+      
+      // If in post-auth redirect, make sure we ping the backend first
+      if (isPostRedirect) {
+        console.log("🔄 Post-redirect: Pinging auth endpoint to ensure connection...");
+        await pingAuthEndpoint();
+      }
+      
+      // Check authentication status with backend
+      console.log("🔄 Checking authentication status with backend...");
+      const { authenticated, user: serverUser, errorType } = await checkAuth();
+      
+      // Update last check timestamp
+      setLastAuthCheck(Date.now());
+      
+      if (authenticated && serverUser) {
+        // Successfully authenticated with backend
+        console.log("✅ Authentication verified: user is authenticated with googleId:", serverUser.googleId);
+        
+        // Update auth state
+        setIsAuthenticated(true);
+        setUser(serverUser);
+        setError(null);
+        
+        // Save to localStorage for persistence
+        saveUserToStorage(serverUser);
+        
+        // If we were redirected from Google auth, show success toast
+        if (isPostRedirect) {
+          toast({
+            title: "Authentication Successful",
+            description: `Welcome, ${serverUser.name || 'User'}!`,
+          });
+          
+          // Clean up URL now that we've processed the redirect
+          cleanupAuthRedirect();
+        }
+        
+        // If we have a saved API key, restore it immediately for better UX
+        if (savedApiKey) {
+          setOpenaiKey(savedApiKey);
+          setHasCompletedOnboarding(true);
+          console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
+        }
+        
+        // Fetch fresh OpenAI API key
+        await fetchOpenAIKey(serverUser.googleId);
+      } 
+      else if (savedUser && !isPostRedirect && !isInitialLoad) {
+        // Server authentication failed but we have saved user data and aren't in the middle of authentication
+        // This is a fallback that allows offline use
+        console.log("⚠️ Using saved user data from localStorage with googleId:", savedUser.googleId);
+        setUser(savedUser);
+        setIsAuthenticated(true);
+        
+        // If we have a saved API key, restore it
+        if (savedApiKey) {
+          setOpenaiKey(savedApiKey);
+          setHasCompletedOnboarding(true);
+          console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
+        }
+      } 
+      else {
+        // Not authenticated
+        setUser(null);
+        setIsAuthenticated(false);
+        
+        // Enhanced error logging
+        if (isPostRedirect) {
+          console.error("❌ Authentication failed after Google redirect!");
+          setError("AUTH_FAILED_AFTER_REDIRECT");
+          
+          toast({
+            title: "Authentication Failed",
+            description: "Could not authenticate with Google. Please try again.",
+            variant: "destructive",
+          });
+          
+          // Clean up URL despite failure
+          cleanupAuthRedirect();
+        } else {
+          // Regular auth failure
+          console.log("❌ Authentication failed:", errorType || "AUTH_FAILED");
+          setError(errorType || "AUTH_FAILED");
+        }
+      }
+    } catch (err) {
+      console.error("❌ Unexpected authentication verification error:", err);
+      setUser(null);
+      setIsAuthenticated(false);
+      setError("UNEXPECTED_ERROR");
+      
+      toast({
+        title: "Authentication Error",
+        description: "An unexpected error occurred. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Effect for initial authentication check
+  useEffect(() => {
+    const checkInitialAuth = async () => {
+      await verifyAuthentication(true);
     };
 
-    verifyAuth();
+    checkInitialAuth();
   }, []);
+  
+  // Additional effect to detect post-auth redirects
+  useEffect(() => {
+    // If we detect a post-auth redirect and haven't attempted auth yet, verify immediately
+    if (isPostAuthRedirect() && !authAttempted && !isLoading) {
+      console.log("🔄 Detected post-auth redirect, triggering immediate auth verification");
+      verifyAuthentication();
+    }
+  }, [authAttempted, isLoading]);
 
   return (
     <AuthContext.Provider 

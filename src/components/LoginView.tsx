@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { googleLoginUrl } from "@/api/auth";
+import { googleLoginUrl, isPostAuthRedirect, cleanupAuthRedirect } from "@/api/auth";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,14 @@ const LoginView = () => {
 
   useEffect(() => {
     // Check if we were redirected back with loggedIn=true
-    const urlParams = new URLSearchParams(window.location.search);
-    const loggedIn = urlParams.get('loggedIn') === 'true';
+    const wasRedirected = isPostAuthRedirect();
     
-    if (loggedIn) {
-      // Clean up URL without refreshing the page
-      window.history.replaceState({}, document.title, window.location.pathname);
+    if (wasRedirected) {
+      console.log("📣 Detected return from Google auth with loggedIn=true");
       setLoginAttempted(true);
       
-      // Force page reload to ensure session is recognized
-      window.location.reload();
+      // Don't clean up URL yet - we'll let AuthContext do that after checking auth
+      // This is to prevent cleaning up the URL before the auth state is checked
     }
   }, []);
 
@@ -69,7 +67,7 @@ const LoginView = () => {
           {loginAttempted && (
             <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                Login detected! If you're still seeing this page, try refreshing your browser.
+                Login detected! Verifying authentication status...
               </p>
             </div>
           )}

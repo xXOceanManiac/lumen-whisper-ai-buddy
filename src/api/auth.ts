@@ -28,15 +28,21 @@ export const logout = async (): Promise<boolean> => {
   }
 };
 
-// Function to check authentication status
+// Function to check authentication status with more reliable cookie handling
 export const checkAuth = async () => {
   try {
     const rememberAuth = getRememberAuth();
     console.log("📝 Checking authentication with /auth/whoami endpoint...");
     
-    const response = await fetch('https://lumen-backend-main.fly.dev/auth/whoami', {
+    // Set a timestamp to avoid cache issues
+    const timestamp = new Date().getTime();
+    const response = await fetch(`https://lumen-backend-main.fly.dev/auth/whoami?_=${timestamp}`, {
       method: 'GET',
       credentials: 'include', // Critical: Include cookies with the request
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
     });
 
     if (!response.ok) {
@@ -71,12 +77,14 @@ export const checkAuth = async () => {
       console.log("✅ Auth check response:", data);
       
       if (data.isAuthenticated && data.user) {
+        console.log("✅ User is authenticated according to server:", data.user.googleId || data.user.id);
         return { 
           authenticated: true, 
           user: data.user, 
           errorType: null 
         };
       } else {
+        console.log("❌ Server reports user is not authenticated");
         return { 
           authenticated: false, 
           user: null, 
@@ -158,9 +166,15 @@ export const validateOpenAIKey = (key: string): boolean => {
 export const pingAuthEndpoint = async (): Promise<boolean> => {
   try {
     console.log("🔄 Pinging auth whoami endpoint...");
-    const response = await fetch('https://lumen-backend-main.fly.dev/auth/whoami', {
+    // Add timestamp to avoid caching issues
+    const timestamp = new Date().getTime();
+    const response = await fetch(`https://lumen-backend-main.fly.dev/auth/whoami?_=${timestamp}`, {
       method: 'GET',
       credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
     });
     
     if (!response.ok) {
@@ -180,5 +194,19 @@ export const pingAuthEndpoint = async (): Promise<boolean> => {
   } catch (error) {
     console.error('❌ Auth endpoint ping error:', error);
     return false;
+  }
+};
+
+// New function to detect if we're in a post-auth redirect
+export const isPostAuthRedirect = (): boolean => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('loggedIn') === 'true';
+};
+
+// New function to clean up URL after login
+export const cleanupAuthRedirect = (): void => {
+  if (isPostAuthRedirect()) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    console.log("✅ Cleaned up login redirect parameters from URL");
   }
 };

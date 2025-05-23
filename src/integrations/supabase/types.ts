@@ -51,6 +51,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          expire: string
+          sess: Json
+          sid: string
+        }
+        Insert: {
+          expire: string
+          sess: Json
+          sid: string
+        }
+        Update: {
+          expire?: string
+          sess?: Json
+          sid?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
