@@ -8,6 +8,23 @@ import LumenLogo from "./LumenLogo";
 
 const LoginView = () => {
   const { lastAuthCheck } = useAuth();
+  const [loginUrl, setLoginUrl] = useState(googleLoginUrl);
+  const [loginAttempted, setLoginAttempted] = useState(false);
+
+  useEffect(() => {
+    // Check if we were redirected back with loggedIn=true
+    const urlParams = new URLSearchParams(window.location.search);
+    const loggedIn = urlParams.get('loggedIn') === 'true';
+    
+    if (loggedIn) {
+      // Clean up URL without refreshing the page
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setLoginAttempted(true);
+      
+      // Force page reload to ensure session is recognized
+      window.location.reload();
+    }
+  }, []);
 
   return (
     <motion.div 
@@ -29,7 +46,7 @@ const LoginView = () => {
 
         <div className="mt-8">
           <a
-            href={googleLoginUrl}
+            href={loginUrl}
             className="w-full flex items-center justify-center gap-2 bg-white text-gray-800 dark:bg-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 font-medium rounded-lg px-6 py-3 shadow-md transition-colors duration-200"
           >
             <svg 
@@ -47,6 +64,14 @@ const LoginView = () => {
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Last authentication check: {new Date(lastAuthCheck).toLocaleTimeString()}
             </p>
+          )}
+
+          {loginAttempted && (
+            <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                Login detected! If you're still seeing this page, try refreshing your browser.
+              </p>
+            </div>
           )}
           
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">

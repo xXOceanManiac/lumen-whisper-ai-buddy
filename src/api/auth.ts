@@ -2,12 +2,12 @@
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
-export const googleLoginUrl = '/api/auth/google/login';
+export const googleLoginUrl = 'https://lumen-backend-main.fly.dev/auth/google/login';
 
 // Function to log out the user
 export const logout = async (): Promise<boolean> => {
   try {
-    const response = await fetch('/api/auth/logout', {
+    const response = await fetch('https://lumen-backend-main.fly.dev/auth/logout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -16,14 +16,14 @@ export const logout = async (): Promise<boolean> => {
     });
 
     if (!response.ok) {
-      console.error('Logout failed:', response.status, response.statusText);
+      console.error('❌ Logout failed:', response.status, response.statusText);
       return false;
     }
 
     localStorage.removeItem('lumen-user-data');
     return true;
   } catch (error) {
-    console.error('Error during logout:', error);
+    console.error('❌ Error during logout:', error);
     return false;
   }
 };
@@ -103,18 +103,19 @@ export const saveOpenAIKey = async (googleId: string, openaiApiKey: string): Pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ googleId, openaiApiKey }),
+      credentials: 'include', // Add credentials here
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Failed to save OpenAI API key:", errorData.error || response.statusText);
+      console.error("❌ Failed to save OpenAI API key:", errorData.error || response.statusText);
       return false;
     }
 
     const data = await response.json();
     return data.success === true;
   } catch (error) {
-    console.error("Error saving OpenAI API key:", error);
+    console.error("❌ Error saving OpenAI API key:", error);
     return false;
   }
 };
@@ -123,7 +124,9 @@ export const saveOpenAIKey = async (googleId: string, openaiApiKey: string): Pro
 export const getOpenAIKey = async (googleId: string): Promise<string | null> => {
   try {
     console.log(`🔑 Fetching OpenAI API key for user with googleId: ${googleId}`);
-    const response = await fetch(`https://lumen-backend-main.fly.dev/api/get-openai-key?googleId=${googleId}`);
+    const response = await fetch(`https://lumen-backend-main.fly.dev/api/get-openai-key?googleId=${googleId}`, {
+      credentials: 'include', // Add credentials here
+    });
 
     if (!response.ok) {
       const errorData = await response.json();

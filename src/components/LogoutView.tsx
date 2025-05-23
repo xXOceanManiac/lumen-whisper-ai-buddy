@@ -16,15 +16,18 @@ const LogoutView = () => {
     const performLogout = async () => {
       try {
         setIsLoggingOut(true);
+        console.log("📤 Starting logout process...");
         const success = await logout();
         
         if (success) {
+          console.log("✅ Logout successful");
           toast({
             title: "Signed Out",
             description: "You've been successfully signed out.",
           });
         } else {
           setError("Could not complete logout process.");
+          console.error("❌ Logout failed");
           toast({
             title: "Logout Error",
             description: "There was an issue signing you out.",
@@ -32,7 +35,7 @@ const LogoutView = () => {
           });
         }
       } catch (error) {
-        console.error("Logout error:", error);
+        console.error("❌ Logout error:", error);
         setError("Network error while trying to log out.");
         toast({
           title: "Connection Error",
