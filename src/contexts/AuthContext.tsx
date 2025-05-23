@@ -167,7 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const verifyAuth = async () => {
       try {
-        console.log("Starting authentication verification...");
+        console.log("🔄 Starting authentication verification...");
         // Check if we just got redirected from successful Google login
         const urlParams = new URLSearchParams(window.location.search);
         const googleSuccess = urlParams.get('google') === 'success';
@@ -181,13 +181,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (googleSuccess) {
           // Clean up URL without refreshing the page
           window.history.replaceState({}, document.title, window.location.pathname);
-          console.log("Detected Google auth success, cleaned up URL params");
+          console.log("✅ Detected Google auth success, cleaned up URL params");
           
           // After successful Google login, ping the auth endpoint to verify it's working
           await pingAuthEndpoint();
         }
         
-        // Check authentication status
+        // Check authentication status using the updated function that points to /auth/whoami
         const { authenticated, user: serverUser, errorType } = await checkAuth();
         
         setIsAuthenticated(authenticated);
@@ -198,7 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const finalUser = serverUser;
           setUser(finalUser);
           setError(null);
-          console.log("Authentication verified: user is authenticated with googleId:", finalUser.googleId);
+          console.log("✅ Authentication verified: user is authenticated with googleId:", finalUser.googleId);
           
           // Save user data to localStorage for persistence
           saveUserToStorage(finalUser);
@@ -218,12 +218,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log("✅ Restored OpenAI API key from localStorage:", savedApiKey.substring(0, 5) + "...");
           }
           
-          // Fetch fresh OpenAI API key - IMPORTANT: This happens right after authentication
+          // Fetch fresh OpenAI API key
           await fetchOpenAIKey(finalUser.googleId);
         } else if (savedUser && !googleSuccess) {
           // If we have a saved user but server authentication failed, and we're not in the middle
           // of a new authentication attempt, try to use the saved user data
-          console.log("Using saved user data from localStorage with googleId:", savedUser.googleId);
+          console.log("⚠️ Using saved user data from localStorage with googleId:", savedUser.googleId);
           setUser(savedUser);
           setIsAuthenticated(true);
           
@@ -242,11 +242,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Enhanced error logging
           if (errorType === "API_MISCONFIGURED") {
-            console.error("Authentication endpoint returned HTML instead of JSON - API route may be misconfigured");
+            console.error("❌ Authentication endpoint returned HTML instead of JSON - API route may be misconfigured");
             setError("API_MISCONFIGURED");
+          } else if (errorType === "INVALID_RESPONSE") {
+            console.error("❌ Authentication endpoint returned invalid non-JSON response");
+            setError("INVALID_RESPONSE");
+          } else if (errorType === "PARSE_ERROR") {
+            console.error("❌ Could not parse JSON response from authentication endpoint");
+            setError("PARSE_ERROR");
           } else {
             setError(errorType || "AUTH_FAILED");
-            console.log(`Authentication failed: ${errorType || "AUTH_FAILED"}`);
+            console.log(`❌ Authentication failed: ${errorType || "AUTH_FAILED"}`);
           }
           
           // Clear local storage on authentication failure
@@ -265,7 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setOpenaiKey(null);
         setError("UNEXPECTED_ERROR");
-        console.error("Unexpected authentication verification error:", err);
+        console.error("❌ Unexpected authentication verification error:", err);
         
         // Show error toast for unexpected errors
         toast({

@@ -1,3 +1,4 @@
+
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
@@ -31,22 +32,20 @@ export const logout = async (): Promise<boolean> => {
 export const checkAuth = async () => {
   try {
     const rememberAuth = getRememberAuth();
-    const response = await fetch('/api/check-auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',  // Critical: Include cookies with the request
-      body: JSON.stringify({ remember: rememberAuth }),
+    console.log("📝 Checking authentication with /auth/whoami endpoint...");
+    
+    const response = await fetch('https://lumen-backend-main.fly.dev/auth/whoami', {
+      method: 'GET',
+      credentials: 'include', // Critical: Include cookies with the request
     });
 
     if (!response.ok) {
-      console.error('Authentication check failed:', response.status, response.statusText);
+      console.error('❌ Auth check failed:', response.status, response.statusText);
 
       // Handle HTML responses (which indicate routing issues)
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
-        console.error('Received HTML instead of JSON. API route may be misconfigured.');
+        console.error('❌ Received HTML instead of JSON. API route may be misconfigured.');
         return { authenticated: false, user: null, errorType: "API_MISCONFIGURED" };
       }
 
@@ -55,16 +54,42 @@ export const checkAuth = async () => {
         const errorData = await response.json();
         errorType = errorData.errorType || errorType;
       } catch (parseError) {
-        console.error('Failed to parse error message from response:', parseError);
+        console.error('❌ Failed to parse error message from response:', parseError);
       }
       return { authenticated: false, user: null, errorType: errorType };
     }
 
-    const data = await response.json();
-    return { authenticated: data.authenticated, user: data.user, errorType: null };
+    // Check if the response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('❌ Received non-JSON response from auth endpoint');
+      return { authenticated: false, user: null, errorType: "INVALID_RESPONSE" };
+    }
+
+    try {
+      const data = await response.json();
+      console.log("✅ Auth check response:", data);
+      
+      if (data.isAuthenticated && data.user) {
+        return { 
+          authenticated: true, 
+          user: data.user, 
+          errorType: null 
+        };
+      } else {
+        return { 
+          authenticated: false, 
+          user: null, 
+          errorType: data.error || "AUTH_FAILED" 
+        };
+      }
+    } catch (parseError) {
+      console.error('❌ Failed to parse JSON response:', parseError);
+      return { authenticated: false, user: null, errorType: "PARSE_ERROR" };
+    }
   } catch (error) {
-    console.error('Error checking authentication:', error);
-    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('❌ Error checking authentication:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
     return { authenticated: false, user: null, errorType: "AUTH_FAILED" };
   }
 };
@@ -129,21 +154,28 @@ export const validateOpenAIKey = (key: string): boolean => {
 // Add a function to check if the backend is responding properly
 export const pingAuthEndpoint = async (): Promise<boolean> => {
   try {
-    const response = await fetch('/api/auth/ping', {
+    console.log("🔄 Pinging auth whoami endpoint...");
+    const response = await fetch('https://lumen-backend-main.fly.dev/auth/whoami', {
       method: 'GET',
       credentials: 'include',
     });
     
     if (!response.ok) {
-      console.error('Auth endpoint ping failed:', response.status, response.statusText);
+      console.error('❌ Auth endpoint ping failed:', response.status, response.statusText);
       return false;
     }
     
-    const data = await response.json();
-    console.log('Auth endpoint ping response:', data);
-    return true;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      console.log('✅ Auth endpoint ping response:', data);
+      return true;
+    } else {
+      console.error('❌ Auth endpoint returned non-JSON response');
+      return false;
+    }
   } catch (error) {
-    console.error('Auth endpoint ping error:', error);
+    console.error('❌ Auth endpoint ping error:', error);
     return false;
   }
 };

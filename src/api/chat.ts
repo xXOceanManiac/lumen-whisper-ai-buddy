@@ -67,15 +67,20 @@ export const callChatApi = async (
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-      credentials: 'include',
+      credentials: 'include', // Ensure cookies are included for auth
     });
 
     if (!response.ok) {
       // Enhanced error handling
       let errorMessage = `Failed to get chat response: ${response.status}`;
       try {
-        const errorText = await response.text();
-        errorMessage += ` - ${errorText || response.statusText}`;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage += ` - ${errorData.error || response.statusText}`;
+        } else {
+          errorMessage += ` - ${response.statusText}`;
+        }
       } catch (e) {
         errorMessage += ` - ${response.statusText}`;
       }
