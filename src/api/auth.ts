@@ -1,4 +1,3 @@
-
 import { getRememberAuth } from "@/utils/localStorage";
 
 // Google login URL for OAuth authentication
@@ -31,7 +30,6 @@ export const logout = async (): Promise<boolean> => {
 // Function to check authentication status with more reliable cookie handling
 export const checkAuth = async () => {
   try {
-    const rememberAuth = getRememberAuth();
     console.log("📝 Checking authentication with /auth/whoami endpoint...");
     
     // Set a timestamp to avoid cache issues
@@ -45,11 +43,12 @@ export const checkAuth = async () => {
       }
     });
 
+    // Check if the response is JSON - important to prevent parsing HTML errors
+    const contentType = response.headers.get('content-type');
     if (!response.ok) {
       console.error('❌ Auth check failed:', response.status, response.statusText);
 
       // Handle HTML responses (which indicate routing issues)
-      const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
         console.error('❌ Received HTML instead of JSON. API route may be misconfigured.');
         return { authenticated: false, user: null, errorType: "API_MISCONFIGURED" };
@@ -65,8 +64,6 @@ export const checkAuth = async () => {
       return { authenticated: false, user: null, errorType: errorType };
     }
 
-    // Check if the response is JSON
-    const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       console.error('❌ Received non-JSON response from auth endpoint');
       return { authenticated: false, user: null, errorType: "INVALID_RESPONSE" };
@@ -76,7 +73,9 @@ export const checkAuth = async () => {
       const data = await response.json();
       console.log("✅ Auth check response:", data);
       
-      if (data.isAuthenticated && data.user) {
+      // CRITICAL FIX: Better detection of authenticated user from server response
+      // Check both isAuthenticated flag and user object existence
+      if ((data.isAuthenticated === true || data.authenticated === true) && (data.user)) {
         console.log("✅ User is authenticated according to server:", data.user.googleId || data.user.id);
         return { 
           authenticated: true, 

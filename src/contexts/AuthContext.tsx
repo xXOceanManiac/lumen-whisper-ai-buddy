@@ -1,6 +1,5 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { checkAuth, getOpenAIKey, validateOpenAIKey, pingAuthEndpoint, cleanupAuthRedirect, isPostAuthRedirect } from "@/api/auth";
+import { checkAuth, getOpenAIKey, cleanupAuthRedirect, isPostAuthRedirect } from "@/api/auth";
 import { useToast } from "@/hooks/use-toast";
 import { saveOpenAIKey as saveOpenAIKeyToStorage, getOpenAIKey as getOpenAIKeyFromStorage, validateOpenAIKeyFormat } from "@/utils/localStorage";
 
@@ -51,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [lastAuthCheck, setLastAuthCheck] = useState<number | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [authAttempted, setAuthAttempted] = useState(false);
+  const [isRedirectedFromAuth, setIsRedirectedFromAuth] = useState(false);
   const { toast } = useToast();
 
   // Save user data to localStorage
@@ -176,9 +176,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Check if we just got redirected from successful Google login
       const isPostRedirect = isPostAuthRedirect();
-      
-      if (isPostRedirect) {
+      if (isPostRedirect && !isRedirectedFromAuth) {
         console.log("✅ Detected post-auth redirect with loggedIn=true");
+        setIsRedirectedFromAuth(true);
       }
       
       // Get saved user from localStorage for fallback
@@ -186,12 +186,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Load saved API key from localStorage
       const savedApiKey = getOpenAIKeyFromStorage();
-      
-      // If in post-auth redirect, make sure we ping the backend first
-      if (isPostRedirect) {
-        console.log("🔄 Post-redirect: Pinging auth endpoint to ensure connection...");
-        await pingAuthEndpoint();
-      }
       
       // Check authentication status with backend
       console.log("🔄 Checking authentication status with backend...");
@@ -249,25 +243,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } 
       else {
         // Not authenticated
-        setUser(null);
-        setIsAuthenticated(false);
+        console.error("❌ Authentication failed:", errorType || "AUTH_FAILED");
         
-        // Enhanced error logging
+        // IMPORTANT FIX: Don't immediately reset user if this is a post-redirect - could be timing issue
         if (isPostRedirect) {
-          console.error("❌ Authentication failed after Google redirect!");
-          setError("AUTH_FAILED_AFTER_REDIRECT");
-          
-          toast({
-            title: "Authentication Failed",
-            description: "Could not authenticate with Google. Please try again.",
-            variant: "destructive",
-          });
+          console.log("⚠️ Auth failed after redirect, waiting for next check...");
+          // Don't clear user/auth state yet if we're in post-redirect state
+          // This gives time for cookies to be properly recognized
           
           // Clean up URL despite failure
           cleanupAuthRedirect();
+          
+          // Schedule another auth check after a brief delay
+          setTimeout(() => {
+            console.log("🔄 Retrying auth verification after redirect...");
+            verifyAuthentication(false);
+          }, 1500);
         } else {
-          // Regular auth failure
-          console.log("❌ Authentication failed:", errorType || "AUTH_FAILED");
+          // Regular auth failure - not during redirect process
+          setUser(null);
+          setIsAuthenticated(false);
           setError(errorType || "AUTH_FAILED");
         }
       }

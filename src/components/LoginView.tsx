@@ -1,14 +1,13 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { googleLoginUrl, isPostAuthRedirect, cleanupAuthRedirect } from "@/api/auth";
+import { googleLoginUrl, isPostAuthRedirect } from "@/api/auth";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import LumenLogo from "./LumenLogo";
 
 const LoginView = () => {
   const { lastAuthCheck } = useAuth();
-  const [loginUrl, setLoginUrl] = useState(googleLoginUrl);
+  const [loginUrl] = useState(googleLoginUrl);
   const [loginAttempted, setLoginAttempted] = useState(false);
 
   useEffect(() => {
