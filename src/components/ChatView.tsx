@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
@@ -149,6 +150,24 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     }
 
     return formatted;
+  };
+
+  // Format calendar event confirmation with readable time
+  const formatEventConfirmation = (event: any): string => {
+    const startTime = new Date(event.start.dateTime);
+    const title = event.summary || event.title || "Event";
+    
+    // Format time in a readable way
+    const timeString = startTime.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    return `Very good, Sir. I've scheduled "${title}" for ${timeString}.`;
   };
 
   // Check for calendar confirmation in responses
@@ -305,21 +324,31 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         
         // Handle calendar event if present
         if (response.calendarEvent) {
+          // Assume success and format a clean confirmation
+          const formattedConfirmation = formatEventConfirmation(response.calendarEvent);
+          
+          // Override the assistant message with clean confirmation
+          assistantMessage.content = formattedConfirmation;
           assistantMessage.calendarEvent = response.calendarEvent;
+          
           console.log("📅 Calendar event detected:", response.calendarEvent);
           
+          // Automatically refresh calendar view
           setTimeout(() => {
             refreshEvents();
           }, 1000);
           
           const isReminder = response.calendarEvent.description?.includes("Auto-added by Lumen reminder");
+          const eventTitle = response.calendarEvent.summary || response.calendarEvent.title || "Event";
           
-          // Show Alfred confirmation
-          setAlfredConfirmation(`Right away, Sir. "${response.calendarEvent.summary}" has been added to your calendar.`);
+          // Show Alfred confirmation overlay
+          setAlfredConfirmation(`Event added to your calendar, Sir.`);
           
+          // Show success toast with checkmark
           toast({
-            title: isReminder ? "Reminder Set" : "Calendar Event",
-            description: `"${response.calendarEvent.summary}" added to your calendar.`,
+            title: "✅ Event Created",
+            description: `"${eventTitle}" has been added to your calendar.`,
+            duration: 4000,
           });
         } else if (checkForCalendarConfirmation(cleanedContent)) {
           // Show Alfred confirmation for calendar-related responses
