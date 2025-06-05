@@ -36,6 +36,7 @@ export interface CalendarEvent {
     dateTime: string;
     timeZone?: string;
   };
+  location?: string; // Added location property
   created?: string;
   updated?: string;
   status?: string;
