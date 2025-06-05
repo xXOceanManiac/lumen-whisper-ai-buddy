@@ -24,14 +24,23 @@ export const useCalendar = () => {
     try {
       const calendarEvents = await fetchCalendarEvents(user.googleId);
       setEvents(calendarEvents);
+      
+      toast({
+        title: "Calendar Refreshed",
+        description: `Loaded ${calendarEvents.length} events`,
+      });
     } catch (err) {
       console.error("Failed to fetch calendar events:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch calendar events");
-      toast({
-        title: "Calendar Error",
-        description: "Failed to fetch your calendar events",
-        variant: "destructive",
-      });
+      
+      // Don't show error toast for auth redirects
+      if (!err.message?.includes("Redirecting to Google Auth")) {
+        setError(err instanceof Error ? err.message : "Failed to fetch calendar events");
+        toast({
+          title: "Calendar Error", 
+          description: err instanceof Error ? err.message : "Failed to fetch your calendar events",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +69,6 @@ export const useCalendar = () => {
         end
       );
       
-      // Update events list with new event
       setEvents(prev => [newEvent, ...prev]);
       
       toast({
@@ -71,12 +79,16 @@ export const useCalendar = () => {
       return newEvent;
     } catch (err) {
       console.error("Failed to create calendar event:", err);
-      setError(err instanceof Error ? err.message : "Failed to create calendar event");
-      toast({
-        title: "Calendar Error",
-        description: "Failed to create calendar event",
-        variant: "destructive",
-      });
+      
+      // Don't show error toast for auth redirects
+      if (!err.message?.includes("Redirecting to Google Auth")) {
+        setError(err instanceof Error ? err.message : "Failed to create calendar event");
+        toast({
+          title: "Calendar Error",
+          description: err instanceof Error ? err.message : "Failed to create calendar event",
+          variant: "destructive",
+        });
+      }
       return null;
     } finally {
       setIsLoading(false);

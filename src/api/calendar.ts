@@ -1,7 +1,30 @@
-
 import { CalendarEvent } from "@/types";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
+
+// Handle API responses with the new standard format
+const handleApiResponse = async (response: Response) => {
+  const data = await response.json();
+  
+  // Handle 401 unauthorized - redirect to Google Auth
+  if (response.status === 401) {
+    console.log("🔄 Calendar API returned 401, redirecting to Google Auth");
+    window.location.href = `${API_BASE_URL}/auth/google`;
+    throw new Error("Redirecting to Google Auth");
+  }
+  
+  // Handle success: false responses
+  if (!data.success) {
+    if (data.message?.includes('Missing or unauthorized Google ID')) {
+      console.log("🔄 Unauthorized Google ID, redirecting to Google Auth");
+      window.location.href = `${API_BASE_URL}/auth/google`;
+      throw new Error("Redirecting to Google Auth");
+    }
+    throw new Error(data.message || "API request failed");
+  }
+  
+  return data;
+};
 
 export const fetchCalendarEvents = async (googleId: string): Promise<CalendarEvent[]> => {
   try {
@@ -12,19 +35,36 @@ export const fetchCalendarEvents = async (googleId: string): Promise<CalendarEve
       headers: {
         "Content-Type": "application/json",
       },
-      credentials: 'include', // Required for session cookies
+      credentials: 'include',
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Failed to fetch calendar events");
-    }
-
-    const { events } = await response.json();
-    console.log(`✅ Fetched ${events.length} calendar events`);
-    return events;
+    const data = await handleApiResponse(response);
+    console.log(`✅ Fetched ${data.data?.length || 0} calendar events`);
+    return data.data || [];
   } catch (error) {
     console.error("❌ Error fetching calendar events:", error);
+    throw error;
+  }
+};
+
+export const fetchTodayEvents = async (googleId: string): Promise<CalendarEvent[]> => {
+  try {
+    console.log("🔄 Fetching today's calendar events for googleId:", googleId);
+    
+    const today = new Date().toISOString().split('T')[0];
+    const response = await fetch(`${API_BASE_URL}/api/calendar/events/date?date=${today}&googleId=${encodeURIComponent(googleId)}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: 'include',
+    });
+
+    const data = await handleApiResponse(response);
+    console.log(`✅ Fetched ${data.data?.length || 0} events for today`);
+    return data.data || [];
+  } catch (error) {
+    console.error("❌ Error fetching today's events:", error);
     throw error;
   }
 };
@@ -51,17 +91,12 @@ export const createCalendarEvent = async (
         start,
         end,
       }),
-      credentials: 'include', // Required for session cookies
+      credentials: 'include',
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Failed to create calendar event");
-    }
-
-    const event = await response.json();
-    console.log("✅ Calendar event created:", event);
-    return event;
+    const data = await handleApiResponse(response);
+    console.log("✅ Calendar event created:", data.data);
+    return data.data;
   } catch (error) {
     console.error("❌ Error creating calendar event:", error);
     throw error;
@@ -92,12 +127,8 @@ export const checkGoogleCalendarAuth = async (apiKey: string): Promise<boolean> 
       credentials: 'include',
     });
 
-    if (!response.ok) {
-      return false;
-    }
-
-    const { authenticated } = await response.json();
-    return !!authenticated;
+    const data = await handleApiResponse(response);
+    return !!data.authenticated;
   } catch (error) {
     console.error("❌ Error checking calendar auth:", error);
     return false;

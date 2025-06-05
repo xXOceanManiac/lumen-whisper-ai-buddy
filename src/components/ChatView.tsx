@@ -2,13 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types";
 import { callChatApi } from "@/api/chat";
 import { useAuth } from "@/contexts/AuthContext";
-import { Send, LogOut, RefreshCw, Calendar } from "lucide-react";
+import { Send, LogOut, RefreshCw, Calendar, Mic } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import ApiKeySettings from "./ApiKeySettings";
 import CalendarEventsList from "./CalendarEventsList";
+import DailyBriefing from "./DailyBriefing";
+import AlfredConfirmation from "./AlfredConfirmation";
 import { fetchCalendarEvents } from "@/api/calendar";
 import { useCalendar } from "@/hooks/useCalendar";
 
@@ -30,6 +32,8 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   const [isRefreshingKey, setIsRefreshingKey] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showDailyBriefing, setShowDailyBriefing] = useState(false);
+  const [alfredConfirmation, setAlfredConfirmation] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -42,13 +46,13 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
   // Ensure we're using the user from props or from auth context
   const currentUser = user || authUser;
 
-  // Add initial greeting message
+  // Add initial greeting message with Alfred personality
   useEffect(() => {
     setMessages([
       {
         id: "welcome",
         role: "assistant",
-        content: "Hello! I'm your AI assistant. How can I help you today? You can ask about your calendar or schedule events.",
+        content: "Good day, Sir. I'm your AI assistant. How may I be of service today? I can assist with your calendar or answer any questions you may have.",
         timestamp: Date.now()
       }
     ]);
@@ -120,7 +124,40 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
     return current + (needsSpace ? ' ' : '') + newChunk;
   };
 
-  // Toggle calendar view
+  // Alfred-style response formatter
+  const formatAlfredResponse = (content: string): string => {
+    // Convert casual responses to Alfred-style formal responses
+    const alfredPhrases = {
+      "I've added": "I have added",
+      "I'll": "I shall",
+      "I can": "I am able to",
+      "Thanks": "Very good, Sir",
+      "You're welcome": "At your service, Sir",
+      "Got it": "Understood, Sir",
+      "Done": "Completed, Sir",
+      "Sure": "Certainly, Sir"
+    };
+
+    let formatted = content;
+    Object.entries(alfredPhrases).forEach(([casual, formal]) => {
+      formatted = formatted.replace(new RegExp(casual, 'gi'), formal);
+    });
+
+    // Add "Sir" to appropriate responses
+    if (formatted.includes("added to your calendar") || formatted.includes("scheduled")) {
+      formatted = formatted.replace(/\.$/, ", Sir.");
+    }
+
+    return formatted;
+  };
+
+  // Check for calendar confirmation in responses
+  const checkForCalendarConfirmation = (content: string): boolean => {
+    return content.toLowerCase().includes("added to your calendar") || 
+           content.toLowerCase().includes("scheduled") ||
+           content.toLowerCase().includes("event created");
+  };
+
   const handleToggleCalendar = () => {
     setShowCalendar(prev => !prev);
     if (!showCalendar) {
@@ -245,16 +282,12 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
         
         console.log("✅ Chat API streaming response completed");
         
-        // Apply final formatting
-        let cleanedContent = response.content
-          // Fix any double spaces
+        // Apply Alfred-style formatting
+        let cleanedContent = formatAlfredResponse(response.content
           .replace(/\s{2,}/g, ' ')
-          // Fix comma spacing consistently 
           .replace(/,([^\s"])/g, ', $1')
-          // Add proper paragraph breaks
-          .replace(/([.!?])([A-Z])/g, '$1\n\n$2');
+          .replace(/([.!?])([A-Z])/g, '$1\n\n$2'));
         
-        // Clear streaming response once complete
         setStreamingResponse("");
         
         if (!response || !cleanedContent) {
@@ -275,18 +308,22 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           assistantMessage.calendarEvent = response.calendarEvent;
           console.log("📅 Calendar event detected:", response.calendarEvent);
           
-          // Refresh calendar events after a short delay
           setTimeout(() => {
             refreshEvents();
           }, 1000);
           
-          // Check if this is a reminder or regular calendar event
           const isReminder = response.calendarEvent.description?.includes("Auto-added by Lumen reminder");
+          
+          // Show Alfred confirmation
+          setAlfredConfirmation(`Right away, Sir. "${response.calendarEvent.summary}" has been added to your calendar.`);
           
           toast({
             title: isReminder ? "Reminder Set" : "Calendar Event",
             description: `"${response.calendarEvent.summary}" added to your calendar.`,
           });
+        } else if (checkForCalendarConfirmation(cleanedContent)) {
+          // Show Alfred confirmation for calendar-related responses
+          setAlfredConfirmation("Calendar event processed successfully, Sir.");
         }
         
         setMessages(prev => [...prev, assistantMessage]);
@@ -324,6 +361,19 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Alfred confirmation overlay */}
+      {alfredConfirmation && (
+        <AlfredConfirmation
+          message={alfredConfirmation}
+          onDismiss={() => setAlfredConfirmation(null)}
+        />
+      )}
+
+      {/* Daily Briefing Modal */}
+      {showDailyBriefing && (
+        <DailyBriefing onClose={() => setShowDailyBriefing(false)} />
+      )}
+
       {/* Chat Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2">
@@ -346,6 +396,14 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowDailyBriefing(true)}
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-2"
+            aria-label="Daily Briefing"
+          >
+            <Calendar className="w-4 h-4" />
+            <span className="text-sm">Briefing</span>
+          </button>
           <button
             onClick={handleToggleCalendar}
             className={`flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-2 ${showCalendar ? 'text-primary' : ''}`}
@@ -403,7 +461,7 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
             <div ref={messagesEndRef} />
           </div>
           
-          {/* Input Area */}
+          {/* Input Area with Mic Icon */}
           <div className="border-t border-gray-200 dark:border-gray-800 p-4">
             <form onSubmit={handleSubmit} className="flex items-center gap-2">
               <input
@@ -414,6 +472,15 @@ const ChatView = ({ user }: ChatViewProps = {}) => {
                 disabled={isProcessing}
                 className="flex-1 p-3 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
               />
+              <button
+                type="button"
+                disabled={true}
+                className="p-3 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 disabled:opacity-50 cursor-not-allowed"
+                aria-label="Voice input (coming soon)"
+                title="Voice input - Coming soon"
+              >
+                <Mic size={20} />
+              </button>
               <button
                 type="submit"
                 disabled={!input.trim() || isProcessing}
