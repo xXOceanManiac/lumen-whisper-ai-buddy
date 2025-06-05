@@ -46,8 +46,10 @@ const DailyBriefing = ({ onClose }: DailyBriefingProps) => {
     const grouped: { [hour: string]: CalendarEvent[] } = {};
     
     events.forEach(event => {
-      // Fix: Extract dateTime from the start object
-      const startDateTime = event.start?.dateTime || event.start;
+      // Fix: Properly extract dateTime string from the start object
+      const startDateTime = event.start?.dateTime;
+      if (!startDateTime) return; // Skip events without proper datetime
+      
       const startTime = new Date(startDateTime);
       const hour = startTime.getHours();
       const hourKey = hour.toString().padStart(2, '0') + ':00';
