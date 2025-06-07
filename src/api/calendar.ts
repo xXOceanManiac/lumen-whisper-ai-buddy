@@ -1,3 +1,4 @@
+
 import { CalendarEvent } from "@/types";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
@@ -11,6 +12,12 @@ const handleApiResponse = async (response: Response) => {
     console.log("🔄 Calendar API returned 401, redirecting to Google Auth");
     window.location.href = `${API_BASE_URL}/auth/google`;
     throw new Error("Redirecting to Google Auth");
+  }
+  
+  // Handle other non-ok responses
+  if (!response.ok) {
+    console.error("❌ Calendar fetch failed:", data);
+    throw new Error(data?.detail || data?.error || data?.message || 'Unknown server error');
   }
   
   // Handle success: false responses
