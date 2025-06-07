@@ -40,13 +40,24 @@ export const fetchCalendarEvents = async (googleId: string): Promise<CalendarEve
   try {
     console.log("🔄 Fetching calendar events for googleId:", googleId);
     
-    const response = await fetch(`${API_BASE_URL}/api/calendar/events?googleId=${encodeURIComponent(googleId)}`, {
+    if (!googleId) {
+      console.error("❌ GoogleId is null or undefined");
+      throw new Error("GoogleId is required for calendar fetch");
+    }
+    
+    const url = `${API_BASE_URL}/api/calendar/events?googleId=${encodeURIComponent(googleId)}`;
+    console.log("📡 Calendar fetch URL:", url);
+    
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
       credentials: 'include',
     });
+
+    console.log("📡 Raw response status:", response.status);
+    console.log("📡 Raw response ok:", response.ok);
 
     const data = await handleApiResponse(response);
     console.log(`✅ Fetched ${data.data?.length || 0} calendar events`);
@@ -61,14 +72,24 @@ export const fetchTodayEvents = async (googleId: string): Promise<CalendarEvent[
   try {
     console.log("🔄 Fetching today's calendar events for googleId:", googleId);
     
+    if (!googleId) {
+      console.error("❌ GoogleId is null or undefined for today's events");
+      throw new Error("GoogleId is required for today's events fetch");
+    }
+    
     const today = new Date().toISOString().split('T')[0];
-    const response = await fetch(`${API_BASE_URL}/api/calendar/events/date?date=${today}&googleId=${encodeURIComponent(googleId)}`, {
+    const url = `${API_BASE_URL}/api/calendar/events/date?date=${today}&googleId=${encodeURIComponent(googleId)}`;
+    console.log("📡 Today's events fetch URL:", url);
+    
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
       credentials: 'include',
     });
+
+    console.log("📡 Raw response status for today's events:", response.status);
 
     const data = await handleApiResponse(response);
     console.log(`✅ Fetched ${data.data?.length || 0} events for today`);
