@@ -1,4 +1,3 @@
-
 import { CalendarEvent } from "@/types";
 
 const API_BASE_URL = "https://lumen-backend-main.fly.dev";
@@ -14,10 +13,14 @@ const handleApiResponse = async (response: Response) => {
     throw new Error("Redirecting to Google Auth");
   }
   
-  // Handle other non-ok responses
+  // Handle other non-ok responses with detailed logging
   if (!response.ok) {
-    console.error("❌ Calendar fetch failed:", data);
-    throw new Error(data?.detail || data?.error || data?.message || 'Unknown server error');
+    console.error("❌ Calendar fetch failed:", {
+      status: response.status,
+      statusText: response.statusText,
+      body: data
+    });
+    throw new Error(data?.detail || data?.error || data?.message || 'Unknown backend error');
   }
   
   // Handle success: false responses
@@ -49,7 +52,7 @@ export const fetchCalendarEvents = async (googleId: string): Promise<CalendarEve
     console.log(`✅ Fetched ${data.data?.length || 0} calendar events`);
     return data.data || [];
   } catch (error) {
-    console.error("❌ Error fetching calendar events:", error);
+    console.error("❌ Exception caught while fetching calendar events:", error);
     throw error;
   }
 };
@@ -71,7 +74,7 @@ export const fetchTodayEvents = async (googleId: string): Promise<CalendarEvent[
     console.log(`✅ Fetched ${data.data?.length || 0} events for today`);
     return data.data || [];
   } catch (error) {
-    console.error("❌ Error fetching today's events:", error);
+    console.error("❌ Exception caught while fetching today's events:", error);
     throw error;
   }
 };
